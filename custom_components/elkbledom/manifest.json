@@ -1,0 +1,12 @@
+{
+    "domain": "elkbledom",
+    "name": "ElkBLEDOM",
+    "documentation": "https://github.com/dave-code-ruiz/elkbledom",
+    "issue_tracker": "https://github.com/dave-code-ruiz/elkbledom/issues",
+    "config_flow": true,
+    "dependencies": [],
+    "codeowners": ["@dave-code-ruiz"],
+    "requirements": ["bleak==0.13.0"],
+    "iot_class": "local_polling",
+    "version": "0.0.1"
+}
