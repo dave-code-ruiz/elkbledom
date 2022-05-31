@@ -6,9 +6,10 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_MAC
 import voluptuous as vol
 from homeassistant.helpers.device_registry import format_mac
+import logging
 
-from .const import DOMAIN, LOGGER
-
+LOGGER = logging.getLogger(__name__)
+DOMAIN = "elkbledom"
 DATA_SCHEMA = vol.Schema({("host"): str})
 
 MANUAL_MAC = "manual"
@@ -105,6 +106,8 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 await self._instance.turn_off()
                 await asyncio.sleep(2)
                 await self._instance.turn_on()
+                await asyncio.sleep(2)
+                await self._instance.turn_off()
             else:
                 await self._instance.turn_on()
                 await asyncio.sleep(2)

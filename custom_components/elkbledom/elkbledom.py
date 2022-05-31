@@ -2,8 +2,9 @@ from typing import Tuple
 from bleak import BleakClient, BleakScanner
 import traceback
 import asyncio
+import logging
 
-from .const import LOGGER
+LOGGER = logging.getLogger(__name__)
 
 #handle: 0x0002, char properties: 0x12, char value handle: 0x0003, uuid: 00002a00-0000-1000-8000-00805f9b34fb
 #handle: 0x0005, char properties: 0x10, char value handle: 0x0006, uuid: 0000fff4-0000-1000-8000-00805f9b34fb
@@ -87,17 +88,21 @@ class BLEDOMInstance:
         return self._brightness
 
     async def set_color(self, rgb: Tuple[int, int, int]):
+        self._rgb_color = rgb
         r, g, b = rgb
-        await self._write([0x7e, 0, 0x05, 0x03, r, g, b, 0, 0xef])
+        await self._write([0x7e, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xef])
     
     async def set_white(self, intensity: int):
-        await self._write([0x7e, 0, 0x01, intensity, 0, 0, 0, 0, 0xef])
+        self._brightness = intensity
+        await self._write([0x7e, 0x00, 0x01, intensity, 0x00, 0x00, 0x00, 0x00, 0xef])
 
     async def turn_on(self):
         await self._write([0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef])
+        self._is_on = True
         
     async def turn_off(self):
         await self._write([0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef])
+        self._is_on = False
     
     async def update(self):
         try:
@@ -117,24 +122,27 @@ class BLEDOMInstance:
 
                 LOGGER.info(f"Read UUID: {self._read_uuid}, Write UUID: {self._write_uuid}")
 
-            # await asyncio.sleep(2)
+            #await asyncio.sleep(2)
 
-            # future = asyncio.get_event_loop().create_future()
-            # await self._device.start_notify(self._read_uuid, create_status_callback(future))
+            #future = asyncio.get_event_loop().create_future()
+            #await self._device.start_notify(self._read_uuid, create_status_callback(future))
             # PROBLEMS WITH STATUS VALUE, I HAVE NOT VALUE TO WRITE AND GET STATUS
-            # await self._write(bytearray([0xEF, 0x01, 0x77]))
-            
-            # await asyncio.wait_for(future, 5.0)
-            # await self._device.stop_notify(self._read_uuid)
-            
-            # res = future.result()
-            self._is_on = True #if res[2] == 0x23 else False if res[2] == 0x24 else None
+            if(self._is_on is None):
+                self._is_on = True
+                self._rgb_color = (0, 0, 0)
+                self._brightness = 240
+
+            #await self._write([0x7e, 0x00, 0x01, 0xfa, 0x00, 0x00, 0x00, 0x00, 0xef])
+            #await asyncio.wait_for(future, 5.0)
+            #await self._device.stop_notify(self._read_uuid)
+            #res = future.result()
+            #self._is_on = True #if res[2] == 0x23 else False if res[2] == 0x24 else None
             # self._rgb_color = (res[6], res[7], res[8])
             # self._brightness = res[9] if res[9] > 0 else None
             # LOGGER.debug(''.join(format(x, ' 03x') for x in res))
 
         except (Exception) as error:
-            self._is_on = True
+            self._is_on = False
             LOGGER.error("Error getting status: %s", error)
             track = traceback.format_exc()
             LOGGER.debug(track)
