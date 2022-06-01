@@ -16,9 +16,13 @@ You can know your uuid with gatttool:
 
 gatttool -I
 
-connect FF:FF:FF:FF:FF:XX
+[be:59:7a:00:08:xx][LE]> connect be:59:7a:00:08:xx
 
-primary
+Attempting to connect to be:59:7a:00:08:xx
+
+Connection successful
+
+[be:59:7a:00:08:xx][LE]> primary
 
 ```
 
