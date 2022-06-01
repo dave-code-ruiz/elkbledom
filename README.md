@@ -4,7 +4,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 
-Home Assistant integration for LED STRIP NAME ELK BLEDOM with app Duoco Strip
+Home Assistant integration for LED STRIP NAME ELK BLEDOM with android/iphone mobile app duoCo Strip (https://play.google.com/store/apps/details?id=shy.smartled&hl=es&gl=US)
 
 Supports controlling BLE based lights in HA
 
