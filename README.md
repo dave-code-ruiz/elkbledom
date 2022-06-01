@@ -37,7 +37,7 @@ Multiple light support
 
 ## Not supported
 
-Live state polling: External control (i.e. IR remote) state changes will reflect in Home Assistant
+Live state polling: External control (i.e. IR remote) state changes NO reflect in Home Assistant and NO updated.
 
 [Light modes] (blinking, fading, etc) is not yet supported.
 
@@ -45,7 +45,7 @@ Live state polling: External control (i.e. IR remote) state changes will reflect
 
 1. Live state polling dont work.
 
-3. Code in Work, not finnished, i am waiting for status write value:
+3. I am waiting for read status value:
 
             ```
             
