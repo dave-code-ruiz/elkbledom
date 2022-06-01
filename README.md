@@ -6,7 +6,34 @@
 
 Home Assistant integration for LED STRIP NAME ELK BLEDOM with android/iphone mobile app duoCo Strip (https://play.google.com/store/apps/details?id=shy.smartled&hl=es&gl=US)
 
-Supports controlling ELK-BLEDOM based lights in HA
+## Supported strips
+
+Code supports controlling ELK-BLEDOM based lights in HA with uuid: xxx
+
+You can know your uuid with gatttool:
+
+```
+
+gatttool -I
+
+connect FF:FF:FF:FF:FF:XX
+
+primary
+
+```
+
+If your strip show some uuid like "0000fff3-0000-1000-8000-00805f9b34fb" , your strip it is supported
+
+If your strip show some uuid like:
+
+            "0000ffd5-0000-1000-8000-00805f9b34fb"
+            "0000ffd9-0000-1000-8000-00805f9b34fb"
+            "0000ffe5-0000-1000-8000-00805f9b34fb"
+            "0000ffe9-0000-1000-8000-00805f9b34fb"
+            
+Go to your correct repository: https://github.com/sysofwan/ha-triones
+
+If your uuid is none of the above, create issue with your results uuid and handle information
 
 ## Installation
 
