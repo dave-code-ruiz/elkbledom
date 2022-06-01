@@ -8,7 +8,7 @@ Home Assistant integration for LED STRIP NAME ELK BLEDOM with android/iphone mob
 
 ## Supported strips
 
-Code supports controlling ELK-BLEDOM based lights in HA with uuid: xxx
+Code supports controlling ELK-BLEDOM based lights in HA with write uuid: 0000fff3-0000-1000-8000-00805f9b34fb
 
 You can know your uuid with gatttool:
 
