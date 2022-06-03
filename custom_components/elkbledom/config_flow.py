@@ -6,10 +6,10 @@ from homeassistant import config_entries
 from homeassistant.const import CONF_MAC
 import voluptuous as vol
 from homeassistant.helpers.device_registry import format_mac
+from .const import DOMAIN
 import logging
 
 LOGGER = logging.getLogger(__name__)
-DOMAIN = "elkbledom"
 DATA_SCHEMA = vol.Schema({("host"): str})
 
 MANUAL_MAC = "manual"

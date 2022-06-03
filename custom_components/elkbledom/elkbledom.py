@@ -1,8 +1,11 @@
 from typing import Tuple
+from datetime import datetime
 from bleak import BleakClient, BleakScanner
 import traceback
 import asyncio
 import logging
+
+from custom_components.xiaomi_gateway3.core.device import update
 
 LOGGER = logging.getLogger(__name__)
 
@@ -64,10 +67,15 @@ class BLEDOMInstance:
         self._is_on = None
         self._rgb_color = None
         self._brightness = None
+        self._effect = None
+        self._effect_speed = None
+        self._color_temp = None
         self._write_uuid = None
         self._read_uuid = None
 
     async def _write(self, data: bytearray):
+        if not self._device.is_connected:
+            await self.update()
         LOGGER.debug(''.join(format(x, ' 03x') for x in data))
         await self._device.write_gatt_char(self._write_uuid, data)
 
@@ -86,23 +94,69 @@ class BLEDOMInstance:
     @property
     def white_brightness(self):
         return self._brightness
-
-    async def set_color(self, rgb: Tuple[int, int, int]):
-        self._rgb_color = rgb
-        r, g, b = rgb
-        await self._write([0x7e, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xef])
     
+    @property
+    def color_temp(self):
+        return self._color_temp
+
+    @property
+    def effect(self):
+        return self._effect
+
     async def set_white(self, intensity: int):
-        self._brightness = intensity
         await self._write([0x7e, 0x00, 0x01, intensity, 0x00, 0x00, 0x00, 0x00, 0xef])
+        self._brightness = intensity
+
+    async def set_effect_speed(self, value: int):
+        await self._write([0x7e, 0x00, 0x02, value, 0x00, 0x00, 0x00, 0x00, 0xef])
+        self._effect_speed = value
+
+    async def set_effect(self, value: int):
+        await self._write([0x7e, 0x00, 0x03, value, 0x03, 0x00, 0x00, 0x00, 0xef])
+        self._effect = value
 
     async def turn_on(self):
         await self._write([0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef])
         self._is_on = True
-        
+                
     async def turn_off(self):
         await self._write([0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef])
         self._is_on = False
+    
+    async def set_color(self, rgb: Tuple[int, int, int]):
+        r, g, b = rgb
+        await self._write([0x7e, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xef])
+        self._rgb_color = rgb
+    
+    async def set_color_temp(self, value: int):
+        if value > 100:
+            value = 100
+        warm = value
+        cold = 100 - value
+        await self._write([0x7e, 0x00, 0x05, 0x02, warm, cold, 0x00, 0x00, 0xef])
+        self._color_temp = warm
+
+    async def set_scheduler_on(self, days: int, hours: int, minutes: int, enabled: bool):
+        if enabled:
+            value = days + 0x80
+        else:
+            value = days
+        await self._write([0x7e, 0x00, 0x82, hours, minutes, 0x00, 0x00, value, 0xef])
+
+    async def set_scheduler_off(self, days: int, hours: int, minutes: int, enabled: bool):
+        if enabled:
+            value = days + 0x80
+        else:
+            value = days
+        await self._write([0x7e, 0x00, 0x82, hours, minutes, 0x00, 0x01, value, 0xef])
+
+    async def sync_time(self):
+        date=datetime.date.today()
+        year, week_num, day_of_week = date.isocalendar()
+        await self._write([0x7e, 0x00, 0x83, datetime.datetime.now().strftime('%H'), datetime.datetime.now().strftime('%M'), datetime.datetime.now().strftime('%S'), day_of_week, 0x00, 0xef])
+    
+    async def custom_time(self, hour: int, minute: int, second: int, day_of_week: int):
+        await self._write([0x7e, 0x00, 0x83, hour, minute, second, day_of_week, 0x00, 0xef])
     
     async def update(self):
         try:
@@ -128,7 +182,7 @@ class BLEDOMInstance:
             #await self._device.start_notify(self._read_uuid, create_status_callback(future))
             # PROBLEMS WITH STATUS VALUE, I HAVE NOT VALUE TO WRITE AND GET STATUS
             if(self._is_on is None):
-                self._is_on = True
+                self._is_on = False
                 self._rgb_color = (0, 0, 0)
                 self._brightness = 240
 
