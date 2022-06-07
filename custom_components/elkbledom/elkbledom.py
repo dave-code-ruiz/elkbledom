@@ -74,8 +74,6 @@ class BLEDOMInstance:
         self._read_uuid = None
 
     async def _write(self, data: bytearray):
-        if not self._device.is_connected:
-            await self.update()
         LOGGER.debug(''.join(format(x, ' 03x') for x in data))
         await self._device.write_gatt_char(self._write_uuid, data)
 

@@ -171,5 +171,5 @@ class BLEDOMLight(LightEntity):
         await self._instance.turn_off()
         self.async_write_ha_state()
 
-#    async def async_update(self) -> None:
-#        await self._instance.update()
+    async def async_update(self) -> None:
+        await self._instance.update()
