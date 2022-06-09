@@ -5,8 +5,6 @@ import traceback
 import asyncio
 import logging
 
-from custom_components.xiaomi_gateway3.core.device import update
-
 LOGGER = logging.getLogger(__name__)
 
 #handle: 0x0002, char properties: 0x12, char value handle: 0x0003, uuid: 00002a00-0000-1000-8000-00805f9b34fb
