@@ -7,6 +7,7 @@ from .const import DOMAIN, EFFECTS, EFFECTS_list
 
 from homeassistant.const import CONF_MAC
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.light import (
     PLATFORM_SCHEMA,
     ATTR_BRIGHTNESS,
@@ -33,7 +34,7 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
     await instance.update()
     async_add_devices([BLEDOMLight(instance, config_entry.data["name"], config_entry.entry_id)])
     # config_entry.async_on_unload(
-    #     await instance.disconnect()
+    #     await instance.stop()
     # )
 
 class BLEDOMLight(LightEntity):
@@ -106,24 +107,23 @@ class BLEDOMLight(LightEntity):
         """Return the color mode of the light."""
         return self._color_mode
         
-    # @property
-    # def color_mode(self):
-    #     if self._instance.rgb_color:
-    #         if self._instance.rgb_color == (0, 0, 0):
-    #             return COLOR_MODE_WHITE
-    #         return COLOR_MODE_RGB
-    #     return COLOR_MODE_COLOR_TEMP
-
     @property
     def device_info(self):
-        return {
-            "identifiers": {
+        """Return device info."""
+        return DeviceInfo(
+            identifiers={
+                # Serial numbers are unique identifiers within a specific domain
                 (DOMAIN, self._instance.mac)
             },
-            "name": self.name,
-            "connections": {(device_registry.CONNECTION_NETWORK_MAC, self._instance.mac)},
-            "config_entry_id": self._entry_id
-        }
+            name=self.name,
+            connections={(device_registry.CONNECTION_NETWORK_MAC, self._instance.mac)},
+            config_entry_id=self._entry_id,
+        )
+
+    @property
+    def should_poll(self):
+        """No polling needed for a demo light."""
+        return False
 
     def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
         rgb = match_max_scale((255,), color)
@@ -134,6 +134,8 @@ class BLEDOMLight(LightEntity):
         LOGGER.debug(f"Params turn on: {kwargs}")
         if not self.is_on:
             await self._instance.turn_on()
+            LOGGER.debug("Change color to white, some error with other infrared control interact")
+            await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250))
 
         if ATTR_BRIGHTNESS in kwargs and kwargs[ATTR_BRIGHTNESS] != self.brightness and self.rgb_color != None:
             await self._instance.set_color(self._transform_color_brightness(self.rgb_color, kwargs[ATTR_BRIGHTNESS]))
@@ -173,3 +175,4 @@ class BLEDOMLight(LightEntity):
 
     async def async_update(self) -> None:
         await self._instance.update()
+        self.async_write_ha_state()
