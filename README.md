@@ -36,7 +36,7 @@ If your strip show some uuid like:
             "0000ffe5-0000-1000-8000-00805f9b34fb"
             "0000ffe9-0000-1000-8000-00805f9b34fb"
             
-Go to your correct repository: https://github.com/sysofwan/ha-triones
+Go to your correct repository: https://www.home-assistant.io/integrations/led_ble/
 
 If your uuid is none of the above, create issue with your results uuid and handle information
 
