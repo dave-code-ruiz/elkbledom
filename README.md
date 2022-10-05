@@ -93,6 +93,8 @@ Live state polling: External control (i.e. IR remote) state changes NO reflect i
 ## Credits
 This integration will not be possible without the awesome work of this github repositories:
 
+https://www.home-assistant.io/integrations/led_ble/
+
 https://github.com/sysofwan/ha-triones
 
 https://github.com/TheSylex/ELK-BLEDOM-bluetooth-led-strip-controller/
