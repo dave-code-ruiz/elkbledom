@@ -38,10 +38,8 @@ If your strip show some uuid like "0000fff3-0000-1000-8000-00805f9b34fb" , your 
 
 If your strip show some uuid like:
 
-            "0000ffd5-0000-1000-8000-00805f9b34fb"
-            "0000ffd9-0000-1000-8000-00805f9b34fb"
-            "0000ffe5-0000-1000-8000-00805f9b34fb"
-            "0000ffe9-0000-1000-8000-00805f9b34fb"
+            "0000xxxx-0000-1000-8000-00805f9b34fb"
+            xxxx can be one of these values ("ff01", "ffd5", "ffd9", "ffe5", "ffe9", "ff02", "ffd0", "ffd4", "ffe0", "ffe4")
             
 Go to your correct repository: https://www.home-assistant.io/integrations/led_ble/
 
