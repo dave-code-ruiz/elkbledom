@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from homeassistant.components import bluetooth
+from homeassistant.exceptions import ConfigEntryNotReady
 
 from bleak.backends.device import BLEDevice
 from bleak.backends.service import BleakGATTCharacteristic, BleakGATTServiceCollection
@@ -57,8 +58,8 @@ LOGGER = logging.getLogger(__name__)
 # handle: 0x0003   value: 45 4c 4b 2d 42 4c 45 44 4f 4d 20 20 20 -> NAME ELK-BLEDOM
 # [be:59:7a:00:08:d5][LE]>
 
-WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb"]
-READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb"]
+WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb", "0000ffe1-0000-1000-8000-00805f9b34fb"]
+READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb", "0000ffe2-0000-1000-8000-00805f9b34fb"]
 
 DEFAULT_ATTEMPTS = 3
 DISCONNECT_DELAY = 120
@@ -108,6 +109,8 @@ class BLEDOMInstance:
         self._hass = hass
         self._device: BLEDevice | None = None
         self._device = bluetooth.async_ble_device_from_address(self._hass, address, connectable=True)
+        if not self._device:
+            raise ConfigEntryNotReady(f"Couldn't find a nearby device with address: {address}")
         self._connect_lock: asyncio.Lock = asyncio.Lock()
         self._client: BleakClientWithServiceCache | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
@@ -165,7 +168,7 @@ class BLEDOMInstance:
 
     @retry_bluetooth_connection_error
     async def set_white(self, intensity: int):
-        await self._write([0x7e, 0x00, 0x01, intensity, 0x00, 0x00, 0x00, 0x00, 0xef])
+        await self._write([0x7e, 0x00, 0x01, int(intensity*100/255), 0x00, 0x00, 0x00, 0x00, 0xef])
         self._brightness = intensity
 
     @retry_bluetooth_connection_error
@@ -180,7 +183,11 @@ class BLEDOMInstance:
 
     @retry_bluetooth_connection_error
     async def turn_on(self):
-        await self._write([0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef])
+        await self._ensure_connected()
+        if self._write_uuid.uuid == WRITE_CHARACTERISTIC_UUIDS[1]:
+            await self._write([0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef])
+        else:
+            await self._write([0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef])
         self._is_on = True
                 
     @retry_bluetooth_connection_error
@@ -283,15 +290,12 @@ class BLEDOMInstance:
                 ble_device_callback=lambda: self._device,
             )
             LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
-            #NOT NEEDED , ONLY ONE READ/WRITE UUID
-            #resolved = self._resolve_characteristics(client.services)
-            #if not resolved:
-            #    # Try to handle services failing to load
-            #    resolved = self._resolve_characteristics(await client.get_services())
-            #self._cached_services = client.services if resolved else None
-            self._read_uuid = READ_CHARACTERISTIC_UUIDS[0]
-            self._write_uuid = WRITE_CHARACTERISTIC_UUIDS[0]
-            self._cached_services = client.services
+            resolved = self._resolve_characteristics(client.services)
+            if not resolved:
+                # Try to handle services failing to load
+                resolved = self._resolve_characteristics(await client.get_services())
+            self._cached_services = client.services if resolved else None
+
             self._client = client
             self._reset_disconnect_timer()
 
