@@ -57,6 +57,9 @@ class BLEDOMLight(LightEntity):
         if self._instance.white_brightness:
             return self._instance.white_brightness
         
+        if self._instance._rgb_color:
+            return max(self._instance.rgb_color)
+        
         return None
 
     @property
@@ -96,7 +99,7 @@ class BLEDOMLight(LightEntity):
     @property
     def rgb_color(self):
         if self._instance.rgb_color:
-            return self._instance.rgb_color
+            return match_max_scale((255,), self._instance.rgb_color)
         return None
 
     @property
@@ -122,16 +125,20 @@ class BLEDOMLight(LightEntity):
         """No polling needed for a demo light."""
         return False
 
+    def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
+        rgb = match_max_scale((255,), color)
+        res = tuple(color * set_brightness // 255 for color in rgb)
+        return res
+
     async def async_turn_on(self, **kwargs: Any) -> None:
         LOGGER.debug(f"Params turn on: {kwargs}")
         if not self.is_on:
             await self._instance.turn_on()
             LOGGER.debug("Change color to white, some error with other infrared control interact")
-            await self._instance.set_color((255, 255, 255))
-            await self._instance.set_white(255)
+            await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250))
 
         if ATTR_BRIGHTNESS in kwargs and kwargs[ATTR_BRIGHTNESS] != self.brightness and self.rgb_color != None:
-            await self._instance.set_white(kwargs[ATTR_BRIGHTNESS])
+            await self._instance.set_color(self._transform_color_brightness(self.rgb_color, kwargs[ATTR_BRIGHTNESS]))
 
         if ATTR_COLOR_TEMP in kwargs:
             self._color_mode = ColorMode.COLOR_TEMP
@@ -141,8 +148,6 @@ class BLEDOMLight(LightEntity):
 
         if ATTR_WHITE in kwargs:
             self._color_mode = ColorMode.WHITE
-            if self.rgb_color != (255, 255, 255):
-                await self._instance.set_color((255, 255, 255))
             if kwargs[ATTR_WHITE] != self.brightness:
                 self._effect = None
                 await self._instance.set_white(kwargs[ATTR_WHITE])
@@ -151,6 +156,10 @@ class BLEDOMLight(LightEntity):
             self._color_mode = ColorMode.RGB
             if kwargs[ATTR_RGB_COLOR] != self.rgb_color:
                 color = kwargs[ATTR_RGB_COLOR]
+                if ATTR_BRIGHTNESS in kwargs:
+                    color = self._transform_color_brightness(color, kwargs[ATTR_BRIGHTNESS])
+                else:
+                    color = self._transform_color_brightness(color, self.brightness)
                 self._effect = None
                 await self._instance.set_color(color)
 
