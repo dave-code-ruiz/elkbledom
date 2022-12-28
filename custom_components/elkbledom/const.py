@@ -1,6 +1,8 @@
 from enum import Enum
 
 DOMAIN = "elkbledom"
+CONF_RESET = "reset"
+
 class EFFECTS (Enum):
     jump_red_green_blue = 0x87
     jump_red_green_blue_yellow_cyan_magenta_white = 0x88

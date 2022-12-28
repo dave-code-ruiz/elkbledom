@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from homeassistant.components import bluetooth
+from homeassistant.exceptions import ConfigEntryNotReady
 
 from bleak.backends.device import BLEDevice
 from bleak.backends.service import BleakGATTCharacteristic, BleakGATTServiceCollection
@@ -51,14 +52,19 @@ LOGGER = logging.getLogger(__name__)
 # Connection successful
 # [be:59:7a:00:08:d5][LE]> char-read-uuid 0000fff3-0000-1000-8000-00805f9b34fb
 # handle: 0x0009   value: 7e 08 82 00 00 00 01 00 ef 2e 39 52 33 36 30 32
+# handle: 0x0009   value: 20 53 48 59 2d 56 38 2e 37 2e 39 52 33 36 30 32
 # [be:59:7a:00:08:d5][LE]> char-read-uuid 0000fff4-0000-1000-8000-00805f9b34fb
 # handle: 0x0006   value: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 # [be:59:7a:00:08:d5][LE]> char-read-uuid 00002a00-0000-1000-8000-00805f9b34fb
 # handle: 0x0003   value: 45 4c 4b 2d 42 4c 45 44 4f 4d 20 20 20 -> NAME ELK-BLEDOM
 # [be:59:7a:00:08:d5][LE]>
 
-WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb"]
-READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb"]
+# CHANGES ARRAYS TO DICT OR MODELDB OBJECT WITH ALL MODEL INFORMATION
+NAME_ARRAY = ["ELK-BLEDOM", "LEDBLE", "MELK"]
+WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb", "0000ffe1-0000-1000-8000-00805f9b34fb", "0000fff3-0000-1000-8000-00805f9b34fb"]
+READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb", "0000ffe2-0000-1000-8000-00805f9b34fb", "0000fff4-0000-1000-8000-00805f9b34fb"]
+TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], bytearray([0x7e, 0x07, 0x83])]
+TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], bytearray([0x7e, 0x04, 0x04])]
 
 DEFAULT_ATTEMPTS = 3
 DISCONNECT_DELAY = 120
@@ -102,9 +108,10 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
     return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
 
 class BLEDOMInstance:
-    def __init__(self, address, hass) -> None:
+    def __init__(self, address, reset: bool, hass) -> None:
         self.loop = asyncio.get_running_loop()
         self._mac = address
+        self._reset = reset
         self._hass = hass
         self._device: BLEDevice | None = None
         self._device = bluetooth.async_ble_device_from_address(self._hass, address, connectable=True)
@@ -121,7 +128,19 @@ class BLEDOMInstance:
         self._color_temp = None
         self._write_uuid = None
         self._read_uuid = None
+        self._turn_on_cmd = None
+        self._turn_off_cmd = None
+        self._model = self._detect_model()
 
+    def _detect_model(self):
+        x = 0
+        for name in NAME_ARRAY:
+            if self._device.name.lower().startswith(name.lower()):
+                self._turn_on_cmd = TURN_ON_CMD[x]
+                self._turn_off_cmd = TURN_OFF_CMD[x]
+                return x
+            x = x + 1
+        
     async def _write(self, data: bytearray):
         """Send command to device and read response."""
         await self._ensure_connected()
@@ -134,6 +153,10 @@ class BLEDOMInstance:
     @property
     def mac(self):
         return self._device.address
+
+    @property
+    def reset(self):
+        return self._reset
 
     @property
     def name(self):
@@ -180,12 +203,14 @@ class BLEDOMInstance:
 
     @retry_bluetooth_connection_error
     async def turn_on(self):
-        await self._write([0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef])
+        #NOT NEEDED, self._write() call to self._ensure_connected()
+        #await self._ensure_connected()
+        await self._write(self._turn_on_cmd)
         self._is_on = True
                 
     @retry_bluetooth_connection_error
     async def turn_off(self):
-        await self._write([0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef])
+        await self._write(self._turn_off_cmd)
         self._is_on = False
     
     @retry_bluetooth_connection_error
@@ -233,16 +258,17 @@ class BLEDOMInstance:
     async def update(self):
         try:
             await self._ensure_connected()
-
-            #future = asyncio.get_event_loop().create_future()
-            #await self._device.start_notify(self._read_uuid, create_status_callback(future))
+           
             # PROBLEMS WITH STATUS VALUE, I HAVE NOT VALUE TO WRITE AND GET STATUS
             if(self._is_on is None):
                 self._is_on = False
                 self._rgb_color = (0, 0, 0)
                 self._brightness = 240
 
+            #future = asyncio.get_event_loop().create_future()
+            #await self._device.start_notify(self._read_uuid, create_status_callback(future))
             #await self._write([0x7e, 0x00, 0x01, 0xfa, 0x00, 0x00, 0x00, 0x00, 0xef])
+            #await self._write(bytearray([0xEF, 0x01, 0x77]))
             #await asyncio.wait_for(future, 5.0)
             #await self._device.stop_notify(self._read_uuid)
             #res = future.result()
@@ -283,15 +309,12 @@ class BLEDOMInstance:
                 ble_device_callback=lambda: self._device,
             )
             LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
-            #NOT NEEDED , ONLY ONE READ/WRITE UUID
-            #resolved = self._resolve_characteristics(client.services)
-            #if not resolved:
-            #    # Try to handle services failing to load
-            #    resolved = self._resolve_characteristics(await client.get_services())
-            #self._cached_services = client.services if resolved else None
-            self._read_uuid = READ_CHARACTERISTIC_UUIDS[0]
-            self._write_uuid = WRITE_CHARACTERISTIC_UUIDS[0]
-            self._cached_services = client.services
+            resolved = self._resolve_characteristics(client.services)
+            if not resolved:
+                # Try to handle services failing to load
+                resolved = self._resolve_characteristics(await client.get_services())
+            self._cached_services = client.services if resolved else None
+
             self._client = client
             self._reset_disconnect_timer()
 

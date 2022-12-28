@@ -31,5 +31,14 @@
             "cannot_connect": "No se puede conectar con la tira led"
         }
     },
+    "options": {
+        "step": {
+          "user": {
+            "data": {
+              "reset": "Resetear color cuando se encienda el led"
+            }
+          }
+        }
+      },
     "title": "Elkbledom"
 }

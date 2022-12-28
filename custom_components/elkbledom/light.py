@@ -134,8 +134,9 @@ class BLEDOMLight(LightEntity):
         LOGGER.debug(f"Params turn on: {kwargs}")
         if not self.is_on:
             await self._instance.turn_on()
-            LOGGER.debug("Change color to white, some error with other infrared control interact")
-            await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250))
+            if self._instance.reset:
+                LOGGER.debug("Change color to white, some error with other infrared control interact")
+                await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250))
 
         if ATTR_BRIGHTNESS in kwargs and kwargs[ATTR_BRIGHTNESS] != self.brightness and self.rgb_color != None:
             await self._instance.set_color(self._transform_color_brightness(self.rgb_color, kwargs[ATTR_BRIGHTNESS]))

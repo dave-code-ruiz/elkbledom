@@ -31,5 +31,14 @@
             "cannot_connect": "Unable to connect to Elkbledom"
         }
     },
+    "options": {
+        "step": {
+          "user": {
+            "data": {
+              "reset": "Reset color when led turn on"
+            }
+          }
+        }
+      },
     "title": "Elkbledom"
 }
