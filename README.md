@@ -49,7 +49,7 @@ If your uuid is none of the above, create issue with your results uuid and handl
 
 ### [HACS](https://hacs.xyz/) (recommended)
 
-Installation can be done through [HACS custom repository](https://hacs.xyz/docs/faq/custom_repositories).
+Installation can be done through HACS , search "elkbledom" and download it
 
 ### Manual installation
 
