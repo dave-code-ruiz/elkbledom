@@ -57,7 +57,7 @@ You can manually clone this repository inside `config/custom_components/` HA fol
 
 ## Setup
 
-After installation, you should find elkbledom under the Configuration -> Integrations -> Add integration.
+After installation, you should find elkbledom under the Configuration -> Integrations -> Add integration -> search elkbledom integration -> install it.
 
 The setup step includes discovery which will list out all ELK BLEDOM lights discovered. The setup will validate connection by toggling the selected light. Make sure your light is in-sight to validate this.
 
