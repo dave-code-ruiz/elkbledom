@@ -3,7 +3,7 @@ from .elkbledom import BLEDOMInstance
 from typing import Any
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_MAC
+from homeassistant.const import CONF_MAC, CONF_MODEL
 import voluptuous as vol
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.data_entry_flow import FlowResult
@@ -14,6 +14,7 @@ from homeassistant.components.bluetooth import (
 )
 from bluetooth_sensor_state_data import BluetoothData
 from home_assistant_bluetooth import BluetoothServiceInfo
+from homeassistant.helpers.selector import selector
 
 from .const import DOMAIN, CONF_RESET
 import logging
@@ -29,7 +30,7 @@ class DeviceData(BluetoothData):
         self._discovery = discovery_info
 
     def supported(self):
-        return self._discovery.name.lower().startswith("elk-bledom") or self._discovery.name.lower().startswith("ledble") or self._discovery.name.lower().startswith("melk")
+        return self._discovery.name.lower().startswith("elk-ble") or self._discovery.name.lower().startswith("ledble") or self._discovery.name.lower().startswith("melk")
 
     def address(self):
         return self._discovery.address
@@ -64,7 +65,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self, discovery_info: BluetoothServiceInfoBleak
     ) -> FlowResult:
         """Handle the bluetooth discovery step."""
-        LOGGER.debug("Discovered bluetooth devices, step bluetooth, : %s", discovery_info)
+        LOGGER.debug("Discovered bluetooth devices, step bluetooth, : %s , %s", discovery_info.address, discovery_info.name)
         await self.async_set_unique_id(discovery_info.address)
         self._abort_if_unique_id_configured()
         device = DeviceData(discovery_info)

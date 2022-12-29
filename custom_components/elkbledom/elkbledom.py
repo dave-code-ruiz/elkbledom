@@ -60,7 +60,7 @@ LOGGER = logging.getLogger(__name__)
 # [be:59:7a:00:08:d5][LE]>
 
 # CHANGES ARRAYS TO DICT OR MODELDB OBJECT WITH ALL MODEL INFORMATION
-NAME_ARRAY = ["ELK-BLEDOM", "LEDBLE", "MELK"]
+NAME_ARRAY = ["ELK-BLE", "LEDBLE", "MELK"]
 WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb", "0000ffe1-0000-1000-8000-00805f9b34fb", "0000fff3-0000-1000-8000-00805f9b34fb"]
 READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb", "0000ffe2-0000-1000-8000-00805f9b34fb", "0000fff4-0000-1000-8000-00805f9b34fb"]
 TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], bytearray([0x7e, 0x07, 0x83])]
@@ -115,6 +115,8 @@ class BLEDOMInstance:
         self._hass = hass
         self._device: BLEDevice | None = None
         self._device = bluetooth.async_ble_device_from_address(self._hass, address, connectable=True)
+        if not self._device:
+            raise ConfigEntryNotReady(f"Couldn't find a nearby device with address: {address}")
         self._connect_lock: asyncio.Lock = asyncio.Lock()
         self._client: BleakClientWithServiceCache | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
@@ -131,6 +133,7 @@ class BLEDOMInstance:
         self._turn_on_cmd = None
         self._turn_off_cmd = None
         self._model = self._detect_model()
+        LOGGER.debug('Model information for device %s : ModelNo %s, Turn on cmd %s, Turn off cmd %s', self._device.name, self._model, self._turn_on_cmd, self._turn_off_cmd)
 
     def _detect_model(self):
         x = 0
@@ -188,7 +191,7 @@ class BLEDOMInstance:
 
     @retry_bluetooth_connection_error
     async def set_white(self, intensity: int):
-        await self._write([0x7e, 0x00, 0x01, intensity, 0x00, 0x00, 0x00, 0x00, 0xef])
+        await self._write([0x7e, 0x00, 0x01, int(intensity*100/255), 0x00, 0x00, 0x00, 0x00, 0xef])
         self._brightness = intensity
 
     @retry_bluetooth_connection_error
