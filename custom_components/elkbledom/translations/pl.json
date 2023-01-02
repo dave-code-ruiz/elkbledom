@@ -1,0 +1,44 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "mac": "Adres MAC Bluetooth",
+                    "name": "Nazwa"
+                },
+                "title": "Wybierz światło Elkbledom. Upewnij się, że masz je w zasięgu wzroku w celu weryfikacji."
+            },
+            "validate": {
+                "data": {
+                    "retry": "Powtórzyć połączenie weryfikacyjne?",
+                    "flicker": "Czy światło migało?"
+                },
+                "title": "Weryfikacja połączenia Elkbledom"
+            },
+            "manual": {
+                "data": {
+                    "mac": "Adres MAC Bluetooth",
+                    "name": "Nazwa"
+                },
+                "title": "Wprowadź adres MAC Bluetooth"
+            }
+        },
+        "error": {
+            "connect": "Nie można nawiązać połącznenia do światła Elkbledom"
+        },
+        "abort": {
+            "cannot_validate": "Nie można zweryfikować światła Elkbledom",
+            "cannot_connect": "Nie można połączyć się ze światłem Elkbledom"
+        }
+    },
+    "options": {
+        "step": {
+          "user": {
+            "data": {
+              "reset": "Zresetuj kolor gdy LED włączy się"
+            }
+          }
+        }
+      },
+    "title": "Elkbledom"
+}
