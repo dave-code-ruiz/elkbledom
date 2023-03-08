@@ -7,6 +7,8 @@
 
 Home Assistant integration for LED STRIP NAME ELK BLEDOM with android/iphone mobile app duoCo Strip (https://play.google.com/store/apps/details?id=shy.smartled&hl=es&gl=US) or mobile app Lantern Lotus (https://play.google.com/store/apps/details?id=wl.smartled&hl=es&gl=US).
 
+I buy it in amazon spain (https://www.amazon.es/gp/product/B00VFME0Q2/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
+
 ## Supported strips
 
 Code supports controlling ELK-BLEDOM based lights in HA with write uuid: 0000fff3-0000-1000-8000-00805f9b34fb
