@@ -13,6 +13,8 @@ I buy it in amazon spain (https://www.amazon.es/gp/product/B00VFME0Q2/ref=ppx_yo
 
 Code supports controlling ELK-BLEDOM based lights in HA with write uuid: 0000fff3-0000-1000-8000-00805f9b34fb
 
+You can scan BT device with BTScan.py in my repository exec: ``` sudo python3 BTScan.py ```
+
 You can know your uuid with gatttool:
 
 ```
