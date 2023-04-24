@@ -1,0 +1,44 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "mac": "Bluetooth MAC address",
+                    "name": "Name"
+                },
+                "title": "Pick a Elkbledom light. Make sure light in sight for validation."
+            },
+            "validate": {
+                "data": {
+                    "retry": "Retry validate connection?",
+                    "flicker": "Did the light blink?"
+                },
+                "title": "Validate Elkbledom connection"
+            },
+            "manual": {
+                "data": {
+                    "mac": "Bluetooth MAC address",
+                    "name": "Name"
+                },
+                "title": "Enter bluetooth MAC address"
+            }
+        },
+        "error": {
+            "connect": "Unable to connect to Elkbledom"
+        },
+        "abort": {
+            "cannot_validate": "Unable to validate Elkbledom light",
+            "cannot_connect": "Unable to connect to Elkbledom"
+        }
+    },
+    "options": {
+        "step": {
+          "user": {
+            "data": {
+              "reset": "Reset color when led turn on"
+            }
+          }
+        }
+      },
+    "title": "Elkbledom"
+}

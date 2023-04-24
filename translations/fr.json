@@ -1,0 +1,44 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "mac": "Adresse MAC Bluetooth",
+                    "name": "Nom"
+                },
+                "title": "Sélectionner une lumi?re Elkbledom."
+            },
+            "validate": {
+                "data": {
+                    "retry": "Réessayer de se connecter ?",
+                    "flicker": "La lumi?re ?-t-elle clignoté ?"
+                },
+                "title": "Valider la connexion"
+            },
+            "manual": {
+                "data": {
+                    "mac": "Adresse MAC Bluetooth",
+                    "name": "Nom"
+                },
+                "title": "Entrer une adresse MAC Bluetooth"
+            }
+        },
+        "error": {
+            "connect": "Echec de la connexion ? Elkbledom"
+        },
+        "abort": {
+            "cannot_validate": "Echec de validation de la lumi?re Elkbledom",
+            "cannot_connect": "Echec de la connexion ? Elkbledom"
+        }
+    },
+    "options": {
+        "step": {
+            "user": {
+                "data": {
+                    "reset": "Réinitialiser la couleur ? l'allumage"
+                }
+            }
+        }
+    },
+    "title": "Elkbledom"
+}
