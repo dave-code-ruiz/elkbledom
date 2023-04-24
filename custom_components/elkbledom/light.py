@@ -60,7 +60,7 @@ class BLEDOMLight(LightEntity):
         if self._instance._rgb_color:
             return max(self._instance.rgb_color)
         
-        return None
+        return 250
 
     @property
     def is_on(self) -> Optional[bool]:
@@ -135,7 +135,7 @@ class BLEDOMLight(LightEntity):
         if not self.is_on:
             await self._instance.turn_on()
             if self._instance.reset:
-                LOGGER.debug("Change color to white, some error with other infrared control interact")
+                LOGGER.debug("Change color to white to reset led strip when other infrared control interact")
                 await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250))
 
         if ATTR_BRIGHTNESS in kwargs and kwargs[ATTR_BRIGHTNESS] != self.brightness and self.rgb_color != None:

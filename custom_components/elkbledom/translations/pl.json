@@ -6,36 +6,36 @@
                     "mac": "Adres MAC Bluetooth",
                     "name": "Nazwa"
                 },
-                "title": "Wybierz Å›wiatÅ‚o Elkbledom. Upewnij siÄ™, Å¼e masz je w zasiÄ™gu wzroku w celu weryfikacji."
+                "title": "Wybierz œwiat³o Elkbledom. Upewnij siê, ¿e masz je w zasiêgu wzroku w celu weryfikacji."
             },
             "validate": {
                 "data": {
-                    "retry": "PowtÃ³rzyÄ‡ poÅ‚Ä…czenie weryfikacyjne?",
-                    "flicker": "Czy Å›wiatÅ‚o migaÅ‚o?"
+                    "retry": "Powtórzyæ po³¹czenie weryfikacyjne?",
+                    "flicker": "Czy œwiat³o miga³o?"
                 },
-                "title": "Weryfikacja poÅ‚Ä…czenia Elkbledom"
+                "title": "Weryfikacja po³¹czenia Elkbledom"
             },
             "manual": {
                 "data": {
                     "mac": "Adres MAC Bluetooth",
                     "name": "Nazwa"
                 },
-                "title": "WprowadÅº adres MAC Bluetooth"
+                "title": "WprowadŸ adres MAC Bluetooth"
             }
         },
         "error": {
-            "connect": "Nie moÅ¼na nawiÄ…zaÄ‡ poÅ‚Ä…cznenia do Å›wiatÅ‚a Elkbledom"
+            "connect": "Nie mo¿na nawi¹zaæ po³¹cznenia do œwiat³a Elkbledom"
         },
         "abort": {
-            "cannot_validate": "Nie moÅ¼na zweryfikowaÄ‡ Å›wiatÅ‚a Elkbledom",
-            "cannot_connect": "Nie moÅ¼na poÅ‚Ä…czyÄ‡ siÄ™ ze Å›wiatÅ‚em Elkbledom"
+            "cannot_validate": "Nie mo¿na zweryfikowaæ œwiat³a Elkbledom",
+            "cannot_connect": "Nie mo¿na po³¹czyæ siê ze œwiat³em Elkbledom"
         }
     },
     "options": {
         "step": {
           "user": {
             "data": {
-              "reset": "Zresetuj kolor gdy LED wÅ‚Ä…czy siÄ™"
+              "reset": "Zresetuj kolor gdy LED w³¹czy siê"
             }
           }
         }

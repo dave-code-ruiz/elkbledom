@@ -60,11 +60,11 @@ LOGGER = logging.getLogger(__name__)
 # [be:59:7a:00:08:d5][LE]>
 
 # CHANGES ARRAYS TO DICT OR MODELDB OBJECT WITH ALL MODEL INFORMATION
-NAME_ARRAY = ["ELK-BLE", "LEDBLE", "MELK"]
-WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb", "0000ffe1-0000-1000-8000-00805f9b34fb", "0000fff3-0000-1000-8000-00805f9b34fb"]
-READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb", "0000ffe2-0000-1000-8000-00805f9b34fb", "0000fff4-0000-1000-8000-00805f9b34fb"]
-TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], bytearray([0x7e, 0x07, 0x83])]
-TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], bytearray([0x7e, 0x04, 0x04])]
+NAME_ARRAY = ["ELK-BLE", "LEDBLE", "MELK", "ELK-BULB"]
+WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb", "0000ffe1-0000-1000-8000-00805f9b34fb", "0000fff3-0000-1000-8000-00805f9b34fb", "0000fff3-0000-1000-8000-00805f9b34fb"]
+READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb", "0000ffe2-0000-1000-8000-00805f9b34fb", "0000fff4-0000-1000-8000-00805f9b34fb", "0000fff4-0000-1000-8000-00805f9b34fb"]
+TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], bytearray([0x7e, 0x07, 0x83]),[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef]]
+TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], bytearray([0x7e, 0x04, 0x04]), [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]]
 
 DEFAULT_ATTEMPTS = 3
 DISCONNECT_DELAY = 120
@@ -114,9 +114,9 @@ class BLEDOMInstance:
         self._reset = reset
         self._hass = hass
         self._device: BLEDevice | None = None
-        self._device = bluetooth.async_ble_device_from_address(self._hass, address, connectable=True)
+        self._device = bluetooth.async_ble_device_from_address(self._hass, address)
         if not self._device:
-            raise ConfigEntryNotReady(f"Couldn't find a nearby device with address: {address}")
+            raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
         self._connect_lock: asyncio.Lock = asyncio.Lock()
         self._client: BleakClientWithServiceCache | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
