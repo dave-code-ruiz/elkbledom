@@ -49,6 +49,21 @@ Go to your correct repository: https://www.home-assistant.io/integrations/led_bl
 
 If your uuid is none of the above, create issue with your results uuid and handle information
 
+You can use gatttool to try discover your turn on/off command with:
+
+```
+sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004f00001ff00ef # POWERON
+sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e00050300ff0000ef # POWEROFF
+```
+or
+```
+sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004f00001ff00ef # POWER ON
+sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e000503ff000000ef # RED
+sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0005030000ff00ef # BLUE
+sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e00050300ff0000ef # GREEN
+sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004000000ff00ef # POWER OFF
+```
+
 ## Installation
 
 ### [HACS](https://hacs.xyz/) (recommended)
