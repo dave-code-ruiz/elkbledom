@@ -63,11 +63,11 @@ LOGGER = logging.getLogger(__name__)
 NAME_ARRAY = ["ELK-BLE", "LEDBLE", "MELK", "ELK-BULB"]
 WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb", "0000ffe1-0000-1000-8000-00805f9b34fb", "0000fff3-0000-1000-8000-00805f9b34fb", "0000fff3-0000-1000-8000-00805f9b34fb"]
 READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb", "0000ffe2-0000-1000-8000-00805f9b34fb", "0000fff4-0000-1000-8000-00805f9b34fb", "0000fff4-0000-1000-8000-00805f9b34fb"]
-TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], bytearray([0x7e, 0x07, 0x83]),[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef]]
-TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], bytearray([0x7e, 0x04, 0x04]), [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]]
+TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], [0x7e, 0x07, 0x83],[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef]]
+TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], [0x7e, 0x04, 0x04], [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]]
 
 DEFAULT_ATTEMPTS = 3
-DISCONNECT_DELAY = 120
+#DISCONNECT_DELAY = 120
 BLEAK_BACKOFF_TIME = 0.25
 RETRY_BACKOFF_EXCEPTIONS = (BleakDBusError,)
 WrapFuncType = TypeVar("WrapFuncType", bound=Callable[..., Any])
@@ -108,10 +108,11 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
     return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
 
 class BLEDOMInstance:
-    def __init__(self, address, reset: bool, hass) -> None:
+    def __init__(self, address, reset: bool, delay: int, hass) -> None:
         self.loop = asyncio.get_running_loop()
         self._mac = address
         self._reset = reset
+        self._delay = delay
         self._hass = hass
         self._device: BLEDevice | None = None
         self._device = bluetooth.async_ble_device_from_address(self._hass, address)
@@ -346,9 +347,11 @@ class BLEDOMInstance:
         if self._disconnect_timer:
             self._disconnect_timer.cancel()
         self._expected_disconnect = False
-        self._disconnect_timer = self.loop.call_later(
-            DISCONNECT_DELAY, self._disconnect
-        )
+        if self._delay is not None and self._delay != 0:
+            LOGGER.debug("%s: Disconnected from device in %s seconds; RSSI: %s", self.name, self._delay, self.rssi)
+            self._disconnect_timer = self.loop.call_later(
+                self._delay, self._disconnect
+            )
 
     def _disconnected(self, client: BleakClientWithServiceCache) -> None:
         """Disconnected callback."""
@@ -372,7 +375,7 @@ class BLEDOMInstance:
         LOGGER.debug(
             "%s: Disconnecting after timeout of %s",
             self.name,
-            DISCONNECT_DELAY,
+            self._delay,
         )
         await self._execute_disconnect()
 

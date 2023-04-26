@@ -35,7 +35,8 @@
         "step": {
             "user": {
                 "data": {
-                    "reset": "Réinitialiser la couleur ? l'allumage"
+                    "reset": "Réinitialiser la couleur ? l'allumage",
+                    "delay": "Temps d'attente pour la déconnexion (0 pour ne jamais se déconnecter)"
                 }
             }
         }

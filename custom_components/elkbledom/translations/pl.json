@@ -35,7 +35,8 @@
         "step": {
           "user": {
             "data": {
-              "reset": "Zresetuj kolor gdy LED w³¹czy siê"
+              "reset": "Zresetuj kolor gdy LED w³¹czy siê",
+              "delay": "Czas oczekiwania na roz³¹czenie (0, aby nigdy nie roz³¹czaæ)"
             }
           }
         }

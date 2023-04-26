@@ -4,7 +4,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.const import CONF_MAC, EVENT_HOMEASSISTANT_STOP
 
-from .const import DOMAIN, CONF_RESET
+from .const import DOMAIN, CONF_RESET, CONF_DELAY
 from .elkbledom import BLEDOMInstance
 import logging
 
@@ -15,8 +15,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ElkBLEDOM from a config entry."""
     if entry.options.get(CONF_RESET):
         LOGGER.debug("Config Reset data: %s", entry.options.get(CONF_RESET))
+    if entry.options.get(CONF_DELAY):
+        LOGGER.debug("Config delay data: %s", entry.options.get(CONF_DELAY))
 
-    instance = BLEDOMInstance(entry.data[CONF_MAC], entry.options.get(CONF_RESET), hass)
+    instance = BLEDOMInstance(entry.data[CONF_MAC], entry.options.get(CONF_RESET), entry.options.get(CONF_DELAY), hass)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = instance
    
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

@@ -2,6 +2,7 @@ from enum import Enum
 
 DOMAIN = "elkbledom"
 CONF_RESET = "reset"
+CONF_DELAY = "delay"
 
 class EFFECTS (Enum):
     jump_red_green_blue = 0x87
