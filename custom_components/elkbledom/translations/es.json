@@ -6,11 +6,11 @@
                     "mac": "Direccion MAC Bluetooth",
                     "name": "Nombre"
                 },
-                "title": "Elige una tira led. Asegurate de que la luz esté lista y cerca para la validacion."
+                "title": "Elige una tira led. Asegurate de que la luz estÃ© lista y cerca para la validacion."
             },
             "validate": {
                 "data": {
-                    "retry": "?Intentar de nuevo la conexión?",
+                    "retry": "?Intentar de nuevo la conexiÃ³n?",
                     "flicker": "?La luz vibra?"
                 },
                 "title": "Validacion de la conexion"
@@ -27,7 +27,7 @@
             "connect": "No se puede conectar con la tira led"
         },
         "abort": {
-            "cannot_validate": "No se puede validar la conexión",
+            "cannot_validate": "No se puede validar la conexiÃ³n",
             "cannot_connect": "No se puede conectar con la tira led"
         }
     },
@@ -36,7 +36,7 @@
           "user": {
             "data": {
               "reset": "Resetear color cuando se encienda el led",
-              "delay": "Tiempo de espera para desconexión (0 para no desconectar nunca)"
+              "delay": "Tiempo de espera para desconexiÃ³n (0 para no desconectar nunca)"
             }
           }
         }

@@ -6,12 +6,12 @@
                     "mac": "Adresse MAC Bluetooth",
                     "name": "Nom"
                 },
-                "title": "Sélectionner une lumi?re Elkbledom."
+                "title": "SÃ©lectionner une lumi?re Elkbledom."
             },
             "validate": {
                 "data": {
-                    "retry": "Réessayer de se connecter ?",
-                    "flicker": "La lumi?re ?-t-elle clignoté ?"
+                    "retry": "RÃ©essayer de se connecter ?",
+                    "flicker": "La lumi?re ?-t-elle clignotÃ© ?"
                 },
                 "title": "Valider la connexion"
             },
@@ -35,8 +35,8 @@
         "step": {
             "user": {
                 "data": {
-                    "reset": "Réinitialiser la couleur ? l'allumage",
-                    "delay": "Temps d'attente pour la déconnexion (0 pour ne jamais se déconnecter)"
+                    "reset": "RÃ©initialiser la couleur ? l'allumage",
+                    "delay": "Temps d'attente pour la dÃ©connexion (0 pour ne jamais se dÃ©connecter)"
                 }
             }
         }
