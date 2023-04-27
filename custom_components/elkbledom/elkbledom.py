@@ -60,11 +60,26 @@ LOGGER = logging.getLogger(__name__)
 # [be:59:7a:00:08:d5][LE]>
 
 # CHANGES ARRAYS TO DICT OR MODELDB OBJECT WITH ALL MODEL INFORMATION
-NAME_ARRAY = ["ELK-BLE", "LEDBLE", "MELK", "ELK-BULB"]
-WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb", "0000ffe1-0000-1000-8000-00805f9b34fb", "0000fff3-0000-1000-8000-00805f9b34fb", "0000fff3-0000-1000-8000-00805f9b34fb"]
-READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb", "0000ffe2-0000-1000-8000-00805f9b34fb", "0000fff4-0000-1000-8000-00805f9b34fb", "0000fff4-0000-1000-8000-00805f9b34fb"]
-TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], [0x7e, 0x07, 0x83],[0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef]]
-TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], [0x7e, 0x04, 0x04], [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]]
+NAME_ARRAY = ["ELK-BLE", 
+              "LEDBLE", 
+              "MELK", 
+              "ELK-BULB"]
+WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb", 
+                              "0000ffe1-0000-1000-8000-00805f9b34fb", 
+                              "0000fff3-0000-1000-8000-00805f9b34fb", 
+                              "0000fff3-0000-1000-8000-00805f9b34fb"]
+READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb", 
+                              "0000ffe2-0000-1000-8000-00805f9b34fb", 
+                              "0000fff4-0000-1000-8000-00805f9b34fb", 
+                              "0000fff4-0000-1000-8000-00805f9b34fb"]
+TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+               [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], 
+               [0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+               [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef]]
+TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], 
+                [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], 
+                [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],  
+                [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]]
 
 DEFAULT_ATTEMPTS = 3
 #DISCONNECT_DELAY = 120
@@ -324,6 +339,17 @@ class BLEDOMInstance:
 
             LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
             await client.start_notify(self._read_uuid, self._notification_handler)
+            
+            #init commands
+            await self._init_command()
+
+    async def _init_command(self):
+        if self._device.name.lower().startswith("MELK"):
+            LOGGER.debug("Executing init command for: %s; RSSI: %s", self.name, self.rssi)
+            self._write([0x7e, 0x07, 0x83])
+            await asyncio.sleep(1)
+            self._write([0x7e, 0x04, 0x04])
+            await asyncio.sleep(1)
     
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
