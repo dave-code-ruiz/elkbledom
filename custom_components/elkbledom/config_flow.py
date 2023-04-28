@@ -168,7 +168,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def toggle_light(self):
         if not self._instance:
-            self._instance = BLEDOMInstance(self.mac, False, self.hass)
+            self._instance = BLEDOMInstance(self.mac, False, 120, self.hass)
         try:
             await self._instance.update()
             if self._instance.is_on:
