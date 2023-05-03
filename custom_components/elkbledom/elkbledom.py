@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 #handle: 0x0008, char properties: 0x06, char value handle: 0x0009, uuid: 0000fff0-0000-1000-8000-00805f9b34fb
 
 #gatttool -i hci0 -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004f00001ff00ef POWERON
-#gatttool -i hci0 -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e00050300ff0000ef POWEROFF
+#gatttool -i hci0 -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004000000ff00ef POWEROFF
 
 # sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004f00001ff00ef # POWER ON
 # sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e000503ff000000ef # RED
@@ -74,7 +74,7 @@ READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb",
                               "0000fff4-0000-1000-8000-00805f9b34fb"]
 TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
                [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], 
-               [0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+               [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], 
                [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef]]
 TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], 
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], 
@@ -344,12 +344,20 @@ class BLEDOMInstance:
             await self._init_command()
 
     async def _init_command(self):
-        if self._device.name.lower().startswith("MELK"):
-            LOGGER.debug("Executing init command for: %s; RSSI: %s", self.name, self.rssi)
-            self._write([0x7e, 0x07, 0x83])
-            await asyncio.sleep(1)
-            self._write([0x7e, 0x04, 0x04])
-            await asyncio.sleep(1)
+        try:
+            if self._device.name.lower().startswith("MELK"):
+                LOGGER.debug("Executing init command for: %s; RSSI: %s", self.name, self.rssi)
+                self._write([0x7e, 0x07, 0x83])
+                await asyncio.sleep(1)
+                self._write([0x7e, 0x04, 0x04])
+                await asyncio.sleep(1)
+            else:
+                LOGGER.debug("init command for: %s not needed; RSSI: %s", self.name, self.rssi)
+
+        except (Exception) as error:
+            LOGGER.error("Error init command: %s", error)
+            track = traceback.format_exc()
+            LOGGER.debug(track)
     
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
