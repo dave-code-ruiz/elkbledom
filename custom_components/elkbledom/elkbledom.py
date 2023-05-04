@@ -337,27 +337,9 @@ class BLEDOMInstance:
             self._client = client
             self._reset_disconnect_timer()
 
-            LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
-            await client.start_notify(self._read_uuid, self._notification_handler)
-            
-            #init commands
-            await self._init_command()
-
-    async def _init_command(self):
-        try:
-            if self._device.name.lower().startswith("MELK"):
-                LOGGER.debug("Executing init command for: %s; RSSI: %s", self.name, self.rssi)
-                self._write([0x7e, 0x07, 0x83])
-                await asyncio.sleep(1)
-                self._write([0x7e, 0x04, 0x04])
-                await asyncio.sleep(1)
-            else:
-                LOGGER.debug("init command for: %s not needed; RSSI: %s", self.name, self.rssi)
-
-        except (Exception) as error:
-            LOGGER.error("Error init command: %s", error)
-            track = traceback.format_exc()
-            LOGGER.debug(track)
+            if not self._device.name.lower().startswith("MELK"):
+                LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
+                await client.start_notify(self._read_uuid, self._notification_handler)
     
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
