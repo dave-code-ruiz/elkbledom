@@ -337,7 +337,7 @@ class BLEDOMInstance:
             self._client = client
             self._reset_disconnect_timer()
 
-            if not self._device.name.lower().startswith("MELK"):
+            if not self._device.name.lower().startswith("melk"):
                 LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
                 await client.start_notify(self._read_uuid, self._notification_handler)
     
