@@ -345,7 +345,7 @@ class BLEDOMInstance:
 
     async def _login_command(self):
         try:
-            if self._device.name.lower().startswith("MELK"):
+            if self._device.name.lower().startswith("melk"):
                 LOGGER.debug("Executing init command for: %s; RSSI: %s", self.name, self.rssi)
                 self._write([0x7e, 0x07, 0x83])
                 await asyncio.sleep(1)
