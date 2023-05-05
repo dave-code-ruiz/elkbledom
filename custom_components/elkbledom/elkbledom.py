@@ -405,5 +405,6 @@ class BLEDOMInstance:
             self._write_uuid = None
             self._read_uuid = None
             if client and client.is_connected:
-                await client.stop_notify(read_char)
+                if not self._device.name.lower().startswith("melk"):
+                    await client.stop_notify(read_char)
                 await client.disconnect()
