@@ -76,7 +76,7 @@ You can manually clone this repository inside `config/custom_components/` HA fol
 
 ## Setup
 
-After installation, you should find elkbledom under the Configuration -> Integrations -> Add integration -> search elkbledom integration -> follow instructions.
+After installation, you should find elkbledom under the Settings -> Integrations -> Add integration -> search elkbledom integration -> follow instructions.
 
 The setup step includes discovery which will list out all ELK BLEDOM lights discovered. The setup will validate connection by toggling the selected light. Make sure your light is in-sight to validate this.
 
@@ -84,7 +84,7 @@ The setup needs to be repeated for each light.
 
 ## Config
 
-After Setup, you can config two elkbledom params under Configuration -> Integrations -> search elkbledom integration -> Config.
+After Setup, you can config two elkbledom params under Settings -> Integrations -> search elkbledom integration -> Config.
 
 Reset color when led turn on: When led strip turn on, led reset to color white or not. This is needed if you want because i don´t know led strip state and is needed a reset.
 
