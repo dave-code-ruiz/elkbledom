@@ -383,7 +383,7 @@ class BLEDOMInstance:
             self._disconnect_timer.cancel()
         self._expected_disconnect = False
         if self._delay is not None and self._delay != 0:
-            LOGGER.debug("%s: Disconnected from device in %s seconds; RSSI: %s", self.name, self._delay, self.rssi)
+            LOGGER.debug("%s: Configured disconnect from device in %s seconds; RSSI: %s", self.name, self._delay, self.rssi)
             self._disconnect_timer = self.loop.call_later(
                 self._delay, self._disconnect
             )

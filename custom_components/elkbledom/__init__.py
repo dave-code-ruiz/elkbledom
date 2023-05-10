@@ -13,12 +13,11 @@ PLATFORMS = ["light"]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ElkBLEDOM from a config entry."""
-    if entry.options.get(CONF_RESET):
-        LOGGER.debug("Config Reset data: %s", entry.options.get(CONF_RESET))
-    if entry.options.get(CONF_DELAY):
-        LOGGER.debug("Config delay data: %s", entry.options.get(CONF_DELAY))
+    reset = entry.options.get(CONF_RESET, None) or entry.data.get(CONF_RESET, None)
+    delay = entry.options.get(CONF_DELAY, None) or entry.data.get(CONF_DELAY, None)
+    LOGGER.debug("Config Reset data: %s and config delay data: %s", reset, delay)
 
-    instance = BLEDOMInstance(entry.data[CONF_MAC], entry.options.get(CONF_RESET), entry.options.get(CONF_DELAY), hass)
+    instance = BLEDOMInstance(entry.data[CONF_MAC], reset, delay, hass)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = instance
    
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
