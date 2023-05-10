@@ -52,8 +52,8 @@ If your uuid is none of the above, create issue with your results uuid and handl
 You can use gatttool to try discover your turn on/off command with:
 
 ```
-sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004f00001ff00ef # POWERON
-sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e00050300ff0000ef # POWEROFF
+sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e00040100000000ef # POWERON
+sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004000000ff00ef # POWEROFF
 ```
 or
 ```
