@@ -11,9 +11,9 @@ I buy it in amazon spain (https://www.amazon.es/gp/product/B00VFME0Q2/ref=ppx_yo
 
 ## Supported strips
 
-Code supports controlling ELK-BLEDOM based lights in HA with write uuid: 0000fff3-0000-1000-8000-00805f9b34fb
+You can scan BT device with BTScan.py in my repository exec: ``` sudo python3 BTScan.py ```, code supports led strips whose name begins with "ELK-BLE" or "MELK" or "ELK-BULB".
 
-You can scan BT device with BTScan.py in my repository exec: ``` sudo python3 BTScan.py ```
+Code supports controlling lights in HA with write uuid: 0000fff3-0000-1000-8000-00805f9b34fb
 
 You can know your uuid with gatttool:
 
