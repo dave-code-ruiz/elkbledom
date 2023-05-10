@@ -45,7 +45,7 @@ If your strip show some uuid like:
             "0000xxxx-0000-1000-8000-00805f9b34fb"
             xxxx can be one of these values ("ff01", "ffd5", "ffd9", "ffe5", "ffe9", "ff02", "ffd0", "ffd4", "ffe0", "ffe4")
             
-Go to your correct repository: https://www.home-assistant.io/integrations/led_ble/
+            Go to your correct repository: https://www.home-assistant.io/integrations/led_ble/
 
 If your uuid is none of the above, create issue with your results uuid and handle information
 
