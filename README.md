@@ -82,6 +82,14 @@ The setup step includes discovery which will list out all ELK BLEDOM lights disc
 
 The setup needs to be repeated for each light.
 
+## Config
+
+After Setup, you can config two elkbledom params under Configuration -> Integrations -> search elkbledom integration -> Config.
+
+Reset color when led turn on: When led strip turn on, led reset to color white or not. This is needed if you want because i don´t know led strip state and is needed a reset.
+
+Disconnect delay or timeout: You can configure time led strip disconnected from HA (0 equal never disconnect).
+
 ## Features
 Discovery: Automatically discover ELK BLEDOM based lights without manually hunting for Bluetooth MAC address
 
