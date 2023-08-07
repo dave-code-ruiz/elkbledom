@@ -183,7 +183,7 @@ class BLEDOMInstance:
 
     @property
     def rssi(self):
-        return self._advertisement_data.rssi,
+        return self._advertisement_data.rssi
 
     @property
     def is_on(self):
