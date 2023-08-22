@@ -12,7 +12,7 @@ from bleak_retry_connector import (
     BleakNotFoundError,
     establish_connection,
 )
-from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
+from homeassistant.components.bluetooth import async_discovered_service_info, async_ble_device_from_address
 from home_assistant_bluetooth import BluetoothServiceInfo
 from bluetooth_sensor_state_data import BluetoothData
 from typing import Any, TypeVar, cast, Tuple
@@ -126,12 +126,26 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
     return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
 
 class DeviceData(BluetoothData):
-    def __init__(self, discovery_info):
+    def __init__(self, hass, discovery_info):
         self._discovery = discovery_info
         self._supported = self._discovery.name.lower().startswith("elk-ble") or self._discovery.name.lower().startswith("elk-bulb") or self._discovery.name.lower().startswith("ledble") or self._discovery.name.lower().startswith("melk")
         self._address = self._discovery.address
         self._name = self._discovery.name
         self._rssi = self._discovery.rssi
+        self._hass = hass
+        self._bledevice = async_ble_device_from_address(hass, self._address)
+        # try:
+        #     discovered_devices_and_advertisement_data = await BleakScanner.discover(return_adv=True)
+        #     for device, adv_data in discovered_devices_and_advertisement_data.values():
+        #         if device.address == address:
+        #             self._bledevice = device
+        #             self._adv_data = adv_data
+        # except (Exception) as error:
+        #     LOGGER.warning("Warning getting device: %s", error)
+        #     self._bledevice = bluetooth.async_ble_device_from_address(self._hass, address)
+        # if not self._bledevice:
+        #     raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
+        
 
     # def __init__(self, *args):
     #     if isinstance(args[0], BluetoothServiceInfoBleak):
@@ -165,30 +179,32 @@ class DeviceData(BluetoothData):
     @property
     def rssi(self):
         return self._rssi
+    
+    def bledevice(self) -> BLEDevice:
+        return self._bledevice
 
     def _start_update(self, service_info: BluetoothServiceInfo) -> None:
         """Update from BLE advertisement data."""
         LOGGER.debug("Parsing Govee BLE advertisement data: %s", service_info)
 
 class BLEDOMInstance:
-    def __init__(self, address, reset: bool, delay: int, devices, hass) -> None:
+    def __init__(self, address, reset: bool, delay: int, hass) -> None:
         self.loop = asyncio.get_running_loop()
         self._address = address
         self._reset = reset
         self._delay = delay
         self._hass = hass
         self._device: BLEDevice | None = None
-        self._device_data = None
-        if devices is not None:
-            for device in devices:
-                # device = DeviceData(device)
+        self._device_data: DeviceData | None = None
+
+        for discovery_info in async_discovered_service_info(hass):
+            if discovery_info.address == address:
+                device = DeviceData(hass, discovery_info)
                 LOGGER.debug("device %s: %s %s",device.name, device.address, device.rssi)
-                if device.address == address:
+                if device.is_supported:
                     self._device_data = device
+                    
         # self._adv_data: AdvertisementData | None = None
-        #self._device = bluetooth.async_ble_device_from_address(self._hass, address)
-        #if not self._device:
-        #    raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
         self._connect_lock: asyncio.Lock = asyncio.Lock()
         self._client: BleakClientWithServiceCache | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
@@ -359,23 +375,9 @@ class BLEDOMInstance:
             LOGGER.debug(track)
 
     async def _getdevice(self, address) -> None:
-        """Get device and advertisement data from discovered device"""
-        
-        # try:
-        #     discovered_devices_and_advertisement_data = await BleakScanner.discover(return_adv=True)
-        #     for device, adv_data in discovered_devices_and_advertisement_data.values():
-        #         if device.address == address:
-        #             self._device = device
-        #             self._adv_data = adv_data
-        # except (Exception) as error:
-        #     LOGGER.warning("Warning getting device: %s", error)
-        #     self._device = bluetooth.async_ble_device_from_address(self._hass, address)
-        # if not self._device:
-        #     raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
-        
         try:
-            
-            self._device = bluetooth.async_ble_device_from_address(self._hass, address)
+            self._device = self._device_data.bledevice()
+            #self._device = bluetooth.async_ble_device_from_address(self._hass, address)
         except (Exception) as error:
             LOGGER.warning("Warning getting device: %s", error)
         if not self._device:

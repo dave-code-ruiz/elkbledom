@@ -32,7 +32,6 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._instance = None
         self.name = None
         self._discovery_info: BluetoothServiceInfoBleak | None = None
-        self._discovered_device: DeviceData | None = None
         self._discovered_devices = []
 
     async def async_step_bluetooth(
@@ -42,7 +41,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         LOGGER.debug("Discovered bluetooth devices, step bluetooth, : %s , %s", discovery_info.address, discovery_info.name)
         await self.async_set_unique_id(discovery_info.address)
         self._abort_if_unique_id_configured()
-        device = DeviceData(discovery_info)
+        device = DeviceData(self.hass, discovery_info)
         if device.is_supported:
             self._discovered_devices.append(device)
             return await self.async_step_bluetooth_confirm()
@@ -79,7 +78,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             if (device for device in self._discovered_devices if device.address == self.mac) != ([]):
                 LOGGER.debug("Device with address %s in discovered_devices", self.mac)
                 continue
-            device = DeviceData(discovery_info)
+            device = DeviceData(self.hass, discovery_info)
             if device.is_supported:
                 self._discovered_devices.append(device)
         
@@ -104,7 +103,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if "flicker" in user_input:
                 if user_input["flicker"]:
-                    return self.async_create_entry(title=self.name, data={CONF_MAC: self.mac, "name": self.name, "devices": self._discovered_devices})
+                    return self.async_create_entry(title=self.name, data={CONF_MAC: self.mac, "name": self.name})
                 return self.async_abort(reason="cannot_validate")
             
             if "retry" in user_input and not user_input["retry"]:
@@ -144,7 +143,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def toggle_light(self):
         if not self._instance:
-            self._instance = BLEDOMInstance(self.mac, False, 120, self._discovered_devices, self.hass)
+            self._instance = BLEDOMInstance(self.mac, False, 120, self.hass)
         try:
             await self._instance.update()
             if self._instance.is_on:
