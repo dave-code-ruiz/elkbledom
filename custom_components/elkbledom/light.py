@@ -46,7 +46,7 @@ class BLEDOMLight(LightEntity):
         self._color_mode = ColorMode.WHITE
         self._attr_name = name
         self._effect = None
-        self._attr_unique_id = self._instance.mac
+        self._attr_unique_id = self._instance.address
 
     @property
     def available(self):
@@ -56,10 +56,10 @@ class BLEDOMLight(LightEntity):
     def brightness(self):
         if self._instance.white_brightness:
             return self._instance.white_brightness
-        
+
         if self._instance._rgb_color:
             return max(self._instance.rgb_color)
-        
+
         return 250
 
     @property
@@ -106,17 +106,17 @@ class BLEDOMLight(LightEntity):
     def color_mode(self):
         """Return the color mode of the light."""
         return self._color_mode
-        
+
     @property
     def device_info(self):
         """Return device info."""
         return DeviceInfo(
             identifiers={
                 # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, self._instance.mac)
+                (DOMAIN, self._instance.address)
             },
             name=self.name,
-            connections={(device_registry.CONNECTION_NETWORK_MAC, self._instance.mac)},
+            connections={(device_registry.CONNECTION_NETWORK_MAC, self._instance.address)},
         )
 
     @property

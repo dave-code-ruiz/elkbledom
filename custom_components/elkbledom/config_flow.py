@@ -1,5 +1,6 @@
 import asyncio
 from .elkbledom import BLEDOMInstance
+from .elkbledom import DeviceData
 from typing import Any
 
 from homeassistant import config_entries
@@ -12,8 +13,6 @@ from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
     async_discovered_service_info,
 )
-from bluetooth_sensor_state_data import BluetoothData
-from home_assistant_bluetooth import BluetoothServiceInfo
 
 from .const import DOMAIN, CONF_RESET, CONF_DELAY
 import logging
@@ -23,30 +22,6 @@ DATA_SCHEMA = vol.Schema({("host"): str})
 
 MANUAL_MAC = "manual"
 
-
-class DeviceData(BluetoothData):
-    def __init__(self, discovery_info) -> None:
-        self._discovery = discovery_info
-
-    def supported(self):
-        return self._discovery.name.lower().startswith("elk-ble") or self._discovery.name.lower().startswith("elk-bulb") or self._discovery.name.lower().startswith("ledble") or self._discovery.name.lower().startswith("melk")
-
-    def address(self):
-        return self._discovery.address
-
-    def get_device_name(self):
-        return self._discovery.name
-
-    def name(self):
-        return self._discovery.name
-
-    def rssi(self):
-        return self._discovery.rssi
-
-    def _start_update(self, service_info: BluetoothServiceInfo) -> None:
-        """Update from BLE advertisement data."""
-        LOGGER.debug("Parsing Govee BLE advertisement data: %s", service_info)
-        
 class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
@@ -68,7 +43,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(discovery_info.address)
         self._abort_if_unique_id_configured()
         device = DeviceData(discovery_info)
-        if device.supported():
+        if device.is_supported:
             self._discovered_devices.append(device)
             return await self.async_step_bluetooth_confirm()
         else:
@@ -101,19 +76,20 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             if self.mac in current_addresses:
                 LOGGER.debug("Device %s in current_addresses", (self.mac))
                 continue
-            if (device for device in self._discovered_devices if device.address == self.mac) == ([]):
-                LOGGER.debug("Device %s in discovered_devices", (device))
+            if (device for device in self._discovered_devices if device.address == self.mac) != ([]):
+                LOGGER.debug("Device with address %s in discovered_devices", self.mac)
                 continue
             device = DeviceData(discovery_info)
-            if device.supported():
+            if device.is_supported:
                 self._discovered_devices.append(device)
         
         if not self._discovered_devices:
             return await self.async_step_manual()
 
-        LOGGER.debug("Discovered supported devices: %s - %s", self._discovered_devices[0].name(), self._discovered_devices[0].address())
+        for device in self._discovered_devices:
+            LOGGER.debug("Discovered supported devices: %s - %s - %s", device.name, device.address, device.rssi)
 
-        mac_dict = { dev.address(): dev.name() for dev in self._discovered_devices }
+        mac_dict = { dev.address: dev.name for dev in self._discovered_devices }
         mac_dict[MANUAL_MAC] = "Manually add a MAC address"
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema(
@@ -128,7 +104,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if "flicker" in user_input:
                 if user_input["flicker"]:
-                    return self.async_create_entry(title=self.name, data={CONF_MAC: self.mac, "name": self.name})
+                    return self.async_create_entry(title=self.name, data={CONF_MAC: self.mac, "name": self.name, "devices": self._discovered_devices})
                 return self.async_abort(reason="cannot_validate")
             
             if "retry" in user_input and not user_input["retry"]:
@@ -168,7 +144,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def toggle_light(self):
         if not self._instance:
-            self._instance = BLEDOMInstance(self.mac, False, 120, self.hass)
+            self._instance = BLEDOMInstance(self.mac, False, 120, self._discovered_devices, self.hass)
         try:
             await self._instance.update()
             if self._instance.is_on:

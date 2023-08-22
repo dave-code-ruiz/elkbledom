@@ -4,16 +4,17 @@ from homeassistant.components import bluetooth
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from bleak.backends.device import BLEDevice
-from bleak.backends.service import BleakGATTCharacteristic, BleakGATTServiceCollection
+from bleak.backends.service import BleakGATTServiceCollection
 from bleak.exc import BleakDBusError
 from bleak_retry_connector import BLEAK_RETRY_EXCEPTIONS as BLEAK_EXCEPTIONS
 from bleak_retry_connector import (
     BleakClientWithServiceCache,
-    BleakError,
     BleakNotFoundError,
-    ble_device_has_changed,
     establish_connection,
 )
+from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
+from home_assistant_bluetooth import BluetoothServiceInfo
+from bluetooth_sensor_state_data import BluetoothData
 from typing import Any, TypeVar, cast, Tuple
 from collections.abc import Callable
 import traceback
@@ -28,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 #OTHER LED STRIP ??
 #handle: 0x0008, char properties: 0x06, char value handle: 0x0009, uuid: 0000fff0-0000-1000-8000-00805f9b34fb
 
-#gatttool -i hci0 -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004f00001ff00ef POWERON
+#gatttool -i hci0 -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e00040100000000ef POWERON
 #gatttool -i hci0 -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004000000ff00ef POWEROFF
 
 # sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004f00001ff00ef # POWER ON
@@ -53,6 +54,8 @@ LOGGER = logging.getLogger(__name__)
 # [be:59:7a:00:08:d5][LE]> char-read-uuid 0000fff3-0000-1000-8000-00805f9b34fb
 # handle: 0x0009   value: 7e 08 82 00 00 00 01 00 ef 2e 39 52 33 36 30 32
 # handle: 0x0009   value: 20 53 48 59 2d 56 38 2e 37 2e 39 52 33 36 30 32
+# handle: 0x0009   value: 50 33 30 56 33 32 5f 53 48 59 5f 52 31 34 35 33 - MELK
+
 # [be:59:7a:00:08:d5][LE]> char-read-uuid 0000fff4-0000-1000-8000-00805f9b34fb
 # handle: 0x0006   value: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 # [be:59:7a:00:08:d5][LE]> char-read-uuid 00002a00-0000-1000-8000-00805f9b34fb
@@ -60,25 +63,25 @@ LOGGER = logging.getLogger(__name__)
 # [be:59:7a:00:08:d5][LE]>
 
 # CHANGES ARRAYS TO DICT OR MODELDB OBJECT WITH ALL MODEL INFORMATION
-NAME_ARRAY = ["ELK-BLE", 
-              "LEDBLE", 
-              "MELK", 
+NAME_ARRAY = ["ELK-BLE",
+              "LEDBLE",
+              "MELK",
               "ELK-BULB"]
-WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb", 
-                              "0000ffe1-0000-1000-8000-00805f9b34fb", 
-                              "0000fff3-0000-1000-8000-00805f9b34fb", 
+WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb",
+                              "0000ffe1-0000-1000-8000-00805f9b34fb",
+                              "0000fff3-0000-1000-8000-00805f9b34fb",
                               "0000fff3-0000-1000-8000-00805f9b34fb"]
-READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb", 
-                              "0000ffe2-0000-1000-8000-00805f9b34fb", 
-                              "0000fff4-0000-1000-8000-00805f9b34fb", 
+READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb",
+                              "0000ffe2-0000-1000-8000-00805f9b34fb",
+                              "0000fff4-0000-1000-8000-00805f9b34fb",
                               "0000fff4-0000-1000-8000-00805f9b34fb"]
 TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
-               [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], 
-               [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef], 
+               [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef],
+               [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef],
                [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef]]
-TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], 
-                [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], 
-                [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],  
+TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+                [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+                [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]]
 
 DEFAULT_ATTEMPTS = 3
@@ -122,17 +125,70 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
 
     return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
 
+class DeviceData(BluetoothData):
+    def __init__(self, discovery_info):
+        self._discovery = discovery_info
+        self._supported = self._discovery.name.lower().startswith("elk-ble") or self._discovery.name.lower().startswith("elk-bulb") or self._discovery.name.lower().startswith("ledble") or self._discovery.name.lower().startswith("melk")
+        self._address = self._discovery.address
+        self._name = self._discovery.name
+        self._rssi = self._discovery.rssi
+
+    # def __init__(self, *args):
+    #     if isinstance(args[0], BluetoothServiceInfoBleak):
+    #         self._discovery = args[0]
+    #         self._supported = self._discovery.name.lower().startswith("elk-ble") or self._discovery.name.lower().startswith("elk-bulb") or self._discovery.name.lower().startswith("ledble") or self._discovery.name.lower().startswith("melk")
+    #         self.address = self._discovery.address
+    #         self.name = self._discovery.name
+    #         self.rssi = self._discovery.rssi
+    #     else:
+    #         self._supported = args[0]
+    #         self.address = args[1]
+    #         self.name = args[2]
+    #         self.rssi = args[3]
+
+    @property
+    def is_supported(self) -> bool:
+        return self._supported
+
+    @property
+    def address(self):
+        return self._address
+
+    @property
+    def get_device_name(self):
+        return self._name
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def rssi(self):
+        return self._rssi
+
+    def _start_update(self, service_info: BluetoothServiceInfo) -> None:
+        """Update from BLE advertisement data."""
+        LOGGER.debug("Parsing Govee BLE advertisement data: %s", service_info)
+
 class BLEDOMInstance:
-    def __init__(self, address, reset: bool, delay: int, hass) -> None:
+    def __init__(self, address, reset: bool, delay: int, devices, hass) -> None:
         self.loop = asyncio.get_running_loop()
-        self._mac = address
+        self._address = address
         self._reset = reset
         self._delay = delay
         self._hass = hass
         self._device: BLEDevice | None = None
-        self._device = bluetooth.async_ble_device_from_address(self._hass, address)
-        if not self._device:
-            raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
+        self._device_data = None
+        if devices is not None:
+            for device in devices:
+                # device = DeviceData(device)
+                LOGGER.debug("device %s: %s %s",device.name, device.address, device.rssi)
+                if device.address == address:
+                    self._device_data = device
+        # self._adv_data: AdvertisementData | None = None
+        #self._device = bluetooth.async_ble_device_from_address(self._hass, address)
+        #if not self._device:
+        #    raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
         self._connect_lock: asyncio.Lock = asyncio.Lock()
         self._client: BleakClientWithServiceCache | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
@@ -148,9 +204,8 @@ class BLEDOMInstance:
         self._read_uuid = None
         self._turn_on_cmd = None
         self._turn_off_cmd = None
-        self._model = self._detect_model()
-        LOGGER.debug('Model information for device %s : ModelNo %s, Turn on cmd %s, Turn off cmd %s', self._device.name, self._model, self._turn_on_cmd, self._turn_off_cmd)
-
+        self._model = None
+        
     def _detect_model(self):
         x = 0
         for name in NAME_ARRAY:
@@ -159,7 +214,7 @@ class BLEDOMInstance:
                 self._turn_off_cmd = TURN_OFF_CMD[x]
                 return x
             x = x + 1
-        
+
     async def _write(self, data: bytearray):
         """Send command to device and read response."""
         await self._ensure_connected()
@@ -170,8 +225,8 @@ class BLEDOMInstance:
         await self._client.write_gatt_char(self._write_uuid, data, False)
 
     @property
-    def mac(self):
-        return self._device.address
+    def address(self):
+        return self._address
 
     @property
     def reset(self):
@@ -183,12 +238,12 @@ class BLEDOMInstance:
 
     @property
     def rssi(self):
-        return self._device.rssi
+        return 0 if self._device_data is None else self._device_data.rssi
 
     @property
     def is_on(self):
         return self._is_on
-    
+
     @property
     def rgb_color(self):
         return self._rgb_color
@@ -196,7 +251,7 @@ class BLEDOMInstance:
     @property
     def white_brightness(self):
         return self._brightness
-    
+
     @property
     def color_temp(self):
         return self._color_temp
@@ -226,18 +281,18 @@ class BLEDOMInstance:
         #await self._ensure_connected()
         await self._write(self._turn_on_cmd)
         self._is_on = True
-                
+
     @retry_bluetooth_connection_error
     async def turn_off(self):
         await self._write(self._turn_off_cmd)
         self._is_on = False
-    
+
     @retry_bluetooth_connection_error
     async def set_color(self, rgb: Tuple[int, int, int]):
         r, g, b = rgb
         await self._write([0x7e, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xef])
         self._rgb_color = rgb
-    
+
     @retry_bluetooth_connection_error
     async def set_color_temp(self, value: int):
         if value > 100:
@@ -268,16 +323,16 @@ class BLEDOMInstance:
         date=datetime.date.today()
         year, week_num, day_of_week = date.isocalendar()
         await self._write([0x7e, 0x00, 0x83, datetime.datetime.now().strftime('%H'), datetime.datetime.now().strftime('%M'), datetime.datetime.now().strftime('%S'), day_of_week, 0x00, 0xef])
-    
+
     @retry_bluetooth_connection_error
     async def custom_time(self, hour: int, minute: int, second: int, day_of_week: int):
         await self._write([0x7e, 0x00, 0x83, hour, minute, second, day_of_week, 0x00, 0xef])
-    
+
     @retry_bluetooth_connection_error
     async def update(self):
         try:
             await self._ensure_connected()
-           
+
             # PROBLEMS WITH STATUS VALUE, I HAVE NOT VALUE TO WRITE AND GET STATUS
             if(self._is_on is None):
                 self._is_on = False
@@ -287,7 +342,8 @@ class BLEDOMInstance:
             #future = asyncio.get_event_loop().create_future()
             #await self._device.start_notify(self._read_uuid, create_status_callback(future))
             #await self._write([0x7e, 0x00, 0x01, 0xfa, 0x00, 0x00, 0x00, 0x00, 0xef])
-            #await self._write(bytearray([0xEF, 0x01, 0x77]))
+            #await self._write([0x7e, 0x00, 0x10])
+            #await self._write([0x10])
             #await asyncio.wait_for(future, 5.0)
             #await self._device.stop_notify(self._read_uuid)
             #res = future.result()
@@ -302,8 +358,35 @@ class BLEDOMInstance:
             track = traceback.format_exc()
             LOGGER.debug(track)
 
+    async def _getdevice(self, address) -> None:
+        """Get device and advertisement data from discovered device"""
+        
+        # try:
+        #     discovered_devices_and_advertisement_data = await BleakScanner.discover(return_adv=True)
+        #     for device, adv_data in discovered_devices_and_advertisement_data.values():
+        #         if device.address == address:
+        #             self._device = device
+        #             self._adv_data = adv_data
+        # except (Exception) as error:
+        #     LOGGER.warning("Warning getting device: %s", error)
+        #     self._device = bluetooth.async_ble_device_from_address(self._hass, address)
+        # if not self._device:
+        #     raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
+        
+        try:
+            
+            self._device = bluetooth.async_ble_device_from_address(self._hass, address)
+        except (Exception) as error:
+            LOGGER.warning("Warning getting device: %s", error)
+        if not self._device:
+            raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
+        
+        self._detect_model()
+        LOGGER.debug('Model information for device %s : ModelNo %s, Turn on cmd %s, Turn off cmd %s, rssi %s', self._device.name, self._model, self._turn_on_cmd, self._turn_off_cmd, self.rssi)
+
     async def _ensure_connected(self) -> None:
         """Ensure connection to device is established."""
+        await self._getdevice(self.address)
         if self._connect_lock.locked():
             LOGGER.debug(
                 "%s: Connection already in progress, waiting for it to complete; RSSI: %s",
@@ -318,6 +401,7 @@ class BLEDOMInstance:
             if self._client and self._client.is_connected:
                 self._reset_disconnect_timer()
                 return
+
             LOGGER.debug("%s: Connecting; RSSI: %s", self.name, self.rssi)
             client = await establish_connection(
                 BleakClientWithServiceCache,
@@ -358,8 +442,8 @@ class BLEDOMInstance:
         except (Exception) as error:
             LOGGER.error("Error login command: %s", error)
             track = traceback.format_exc()
-            LOGGER.debug(track)    
-    
+            LOGGER.debug(track)
+
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
         LOGGER.debug("%s: Notification received: %s", self.name, data.hex())
@@ -404,7 +488,7 @@ class BLEDOMInstance:
         """Stop the LEDBLE."""
         LOGGER.debug("%s: Stop", self.name)
         await self._execute_disconnect()
-        
+
     async def _execute_timed_disconnect(self) -> None:
         """Execute timed disconnection."""
         LOGGER.debug(
