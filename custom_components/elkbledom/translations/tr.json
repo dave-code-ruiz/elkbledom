@@ -1,0 +1,45 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "mac": "Bluetooth MAC adresi",
+                    "name": "Adı"
+                },
+                "title": "Elkbledom ışığı seç. Doğrulama için ışığın görünür olmasını sağla."
+            },
+            "validate": {
+                "data": {
+                    "retry": "Bağlantıyı doğrulamayı yeniden denemek istiyor musun?",
+                    "flicker": "Işık yanıp söndü mü?"
+                },
+                "title": "Elkbledom bağlantısını doğrula"
+            },
+            "manual": {
+                "data": {
+                    "mac": "Bluetooth MAC adresi",
+                    "name": "Adı"
+                },
+                "title": "Bluetooth MAC adresini gir"
+            }
+        },
+        "error": {
+            "connect": "Elkbledom'a bağlanılamıyor"
+        },
+        "abort": {
+            "cannot_validate": "Elkbledom ışığı doğrulanamıyor",
+            "cannot_connect": "Elkbledom'a bağlanılamıyor"
+        }
+    },
+    "options": {
+        "step": {
+          "user": {
+            "data": {
+              "reset": "LED açıldığında renk sıfırlansın",
+              "delay": "Bağlantı kesme gecikmesi (0 hiçbir zaman bağlantıyı kesmez anlamına gelir)"
+            }
+          }
+        }
+      },
+    "title": "Elkbledom"
+}
