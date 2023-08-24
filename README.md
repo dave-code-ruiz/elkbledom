@@ -9,7 +9,7 @@ Home Assistant integration for LED STRIP NAME ELK BLEDOM with android/iphone mob
 
 I buy it in amazon spain (https://www.amazon.es/gp/product/B00VFME0Q2/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
 
-New support for MELK strip, you can buy it in amazon spain (https://www.amazon.es/distancia-Bluetooth-aplicaci%C3%B3n-sincronizaci%C3%B3n-habitaci%C3%B3n/dp/B09VC77GCZ/ref=sr_1_1?__mk_es_ES=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=1FOMRSJ89HMAE&keywords=B09VC77GCZ&qid=1692875413&sprefix=b09vc77gcz%2Caps%2C81&sr=8-1&th=1) or search "B09VC77GCZ" in your amazon country
+New support for MELK strip, you can buy it in amazon spain (https://www.amazon.es/distancia-Bluetooth-aplicaci%C3%B3n-sincronizaci%C3%B3n-habitaci%C3%B3n/dp/B09VC77GCZ/ref=sr_1_1?__mk_es_ES=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=1FOMRSJ89HMAE&keywords=B09VC77GCZ&qid=1692875413&sprefix=b09vc77gcz%2Caps%2C81&sr=8-1&th=1) or search "B09VC77GCZ" in your amazon country shop
 
 ## Supported strips
 
