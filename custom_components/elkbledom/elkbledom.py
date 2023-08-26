@@ -265,9 +265,9 @@ class BLEDOMInstance:
         return self._rgb_color
 
     @property
-    def white_brightness(self):
+    def brightness(self):
         return self._brightness
-
+    
     @property
     def color_temp(self):
         return self._color_temp
@@ -279,6 +279,11 @@ class BLEDOMInstance:
     @retry_bluetooth_connection_error
     async def set_white(self, intensity: int):
         await self._write([0x7e, 0x00, 0x01, int(intensity*100/255), 0x00, 0x00, 0x00, 0x00, 0xef])
+        self._brightness = intensity
+        
+    @retry_bluetooth_connection_error
+    async def set_brightness(self, intensity: int):
+        await self._write([0x7e, 0x04, 0x01, int(intensity*100/255), 0xff, 0x00, 0xff, 0x00, 0xef])
         self._brightness = intensity
 
     @retry_bluetooth_connection_error
