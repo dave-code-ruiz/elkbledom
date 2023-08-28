@@ -83,6 +83,8 @@ TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]]
+MIN_COLOR_TEMPS_K = [2700,2700,2700,2700]
+MAX_COLOR_TEMPS_K = [6500,6500,6500,6500]
 
 DEFAULT_ATTEMPTS = 3
 #DISCONNECT_DELAY = 120
@@ -182,6 +184,15 @@ class DeviceData(BluetoothData):
     
     def bledevice(self) -> BLEDevice:
         return self._bledevice
+    
+    def update_device(self):
+        #TODO for discovery_info in async_last_service_info(self._hass, self._address):
+        for discovery_info in async_discovered_service_info(self._hass):
+            if discovery_info.address == self._address:
+                #devicedata = DeviceData(self._hass, discovery_info)
+                self._rssi = discovery_info.rssi
+                ##TODO SOMETHING WITH DEVICE discovery_info
+        return
 
     def _start_update(self, service_info: BluetoothServiceInfo) -> None:
         """Update from BLE advertisement data."""
@@ -196,15 +207,6 @@ class BLEDOMInstance:
         self._hass = hass
         self._device: BLEDevice | None = None
         self._device_data: DeviceData | None = None
-
-        for discovery_info in async_discovered_service_info(hass):
-            if discovery_info.address == address:
-                device = DeviceData(hass, discovery_info)
-                LOGGER.debug("device %s: %s %s",device.name, device.address, device.rssi)
-                if device.is_supported:
-                    self._device_data = device
-                    
-        # self._adv_data: AdvertisementData | None = None
         self._connect_lock: asyncio.Lock = asyncio.Lock()
         self._client: BleakClientWithServiceCache | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
@@ -215,12 +217,34 @@ class BLEDOMInstance:
         self._brightness = None
         self._effect = None
         self._effect_speed = None
-        self._color_temp = None
+        self._color_temp_kelvin = None
         self._write_uuid = None
         self._read_uuid = None
         self._turn_on_cmd = None
         self._turn_off_cmd = None
+        self._max_color_temp_kelvin = None
+        self._min_color_temp_kelvin = None
         self._model = None
+
+        try:
+            #self._device = self._device_data.bledevice()
+            self._device = async_ble_device_from_address(hass, self._address)
+        except (Exception) as error:
+            LOGGER.error("Error getting device: %s", error)
+
+        for discovery_info in async_discovered_service_info(hass):
+            if discovery_info.address == address:
+                devicedata = DeviceData(hass, discovery_info)
+                LOGGER.debug("device %s: %s %s",devicedata.name, devicedata.address, devicedata.rssi)
+                if devicedata.is_supported:
+                    self._device_data = devicedata
+        
+        if not self._device:
+            raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
+            
+        # self._adv_data: AdvertisementData | None = None
+        self._detect_model()
+        LOGGER.debug('Model information for device %s : ModelNo %s, Turn on cmd %s, Turn off cmd %s, rssi %s', self._device.name, self._model, self._turn_on_cmd, self._turn_off_cmd, self.rssi)
         
     def _detect_model(self):
         x = 0
@@ -228,6 +252,9 @@ class BLEDOMInstance:
             if self._device.name.lower().startswith(name.lower()):
                 self._turn_on_cmd = TURN_ON_CMD[x]
                 self._turn_off_cmd = TURN_OFF_CMD[x]
+                self._max_color_temp_kelvin = MAX_COLOR_TEMPS_K[x]
+                self._min_color_temp_kelvin = MIN_COLOR_TEMPS_K[x]
+                self._model = name
                 return x
             x = x + 1
 
@@ -269,18 +296,51 @@ class BLEDOMInstance:
         return self._brightness
     
     @property
-    def color_temp(self):
-        return self._color_temp
+    def min_color_temp_kelvin(self):
+        return self._min_color_temp_kelvin
+    
+    @property
+    def max_color_temp_kelvin(self):
+        return self._max_color_temp_kelvin
+    
+    @property
+    def color_temp_kelvin(self):
+        return self._color_temp_kelvin
+
 
     @property
     def effect(self):
         return self._effect
+    
+    @retry_bluetooth_connection_error
+    async def set_color_temp(self, value: int):
+        if value > 100:
+            value = 100
+        warm = value
+        cold = 100 - value
+        await self._write([0x7e, 0x00, 0x05, 0x02, warm, cold, 0x00, 0x00, 0xef])
+        self._color_temp = warm
 
     @retry_bluetooth_connection_error
-    async def set_white(self, intensity: int):
-        await self._write([0x7e, 0x00, 0x01, int(intensity*100/255), 0x00, 0x00, 0x00, 0x00, 0xef])
-        self._brightness = intensity
-        
+    async def set_color_temp_kelvin(self, value: int, brightness: int):
+        # White colours are represented by colour temperature percentage from 0x0 to 0x64 from warm to cool
+        # Warm (0x0) is only the warm white LED, cool (0x64) is only the white LED and then a mixture between the two
+        self._color_temp_kelvin = value
+        if value < self._min_color_temp_kelvin:
+            value = self._min_color_temp_kelvin
+        if value > self._max_color_temp_kelvin:
+            value = self._max_color_temp_kelvin
+        color_temp_percent = int(((value - self._min_color_temp_kelvin) * 100) / (self._max_color_temp_kelvin - self._min_color_temp_kelvin))
+        if brightness is None:
+            brightness = self._brightness
+        brightness_percent = int(brightness * 100 / 255) 
+        await self._write([0x7e, 0x00, 0x05, 0x02, color_temp_percent, brightness_percent, 0x00, 0x00, 0xef])
+
+    @retry_bluetooth_connection_error
+    async def set_white(self):
+        await self._write([0x7e, 0x00, 0x01, 0x99, 0x00, 0x00, 0x00, 0x00, 0xef])
+        self._brightness = 255
+
     @retry_bluetooth_connection_error
     async def set_brightness(self, intensity: int):
         await self._write([0x7e, 0x04, 0x01, int(intensity*100/255), 0xff, 0x00, 0xff, 0x00, 0xef])
@@ -358,8 +418,10 @@ class BLEDOMInstance:
             if(self._is_on is None):
                 self._is_on = False
                 self._rgb_color = (0, 0, 0)
-                self._brightness = 240
+                self._color_temp_kelvin = 5000
+                self._brightness = 255
 
+            self._device_data.update_device()
             #future = asyncio.get_event_loop().create_future()
             #await self._device.start_notify(self._read_uuid, create_status_callback(future))
             #await self._write([0x7e, 0x00, 0x01, 0xfa, 0x00, 0x00, 0x00, 0x00, 0xef])
@@ -372,28 +434,15 @@ class BLEDOMInstance:
             # self._rgb_color = (res[6], res[7], res[8])
             # self._brightness = res[9] if res[9] > 0 else None
             # LOGGER.debug(''.join(format(x, ' 03x') for x in res))
-
+            
         except (Exception) as error:
             self._is_on = False
             LOGGER.error("Error getting status: %s", error)
             track = traceback.format_exc()
             LOGGER.debug(track)
-
-    async def _getdevice(self, address) -> None:
-        try:
-            self._device = self._device_data.bledevice()
-            #self._device = bluetooth.async_ble_device_from_address(self._hass, address)
-        except (Exception) as error:
-            LOGGER.warning("Warning getting device: %s", error)
-        if not self._device:
-            raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
         
-        self._detect_model()
-        LOGGER.debug('Model information for device %s : ModelNo %s, Turn on cmd %s, Turn off cmd %s, rssi %s', self._device.name, self._model, self._turn_on_cmd, self._turn_off_cmd, self.rssi)
-
     async def _ensure_connected(self) -> None:
         """Ensure connection to device is established."""
-        await self._getdevice(self.address)
         if self._connect_lock.locked():
             LOGGER.debug(
                 "%s: Connection already in progress, waiting for it to complete; RSSI: %s",

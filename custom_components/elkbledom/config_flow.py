@@ -76,7 +76,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 LOGGER.debug("Device %s in current_addresses", (self.mac))
                 continue
             if (device for device in self._discovered_devices if device.address == self.mac) != ([]):
-                LOGGER.debug("Device with address %s in discovered_devices", self.mac)
+                #LOGGER.debug("Device with address %s in discovered_devices", self.mac)
                 continue
             device = DeviceData(self.hass, discovery_info)
             if device.is_supported:
@@ -142,9 +142,9 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             ), errors={})
 
     async def toggle_light(self):
-        if not self._instance:
-            self._instance = BLEDOMInstance(self.mac, False, 120, self.hass)
         try:
+            if not self._instance:
+                self._instance = BLEDOMInstance(self.mac, False, 120, self.hass)
             await self._instance.update()
             if self._instance.is_on:
                 await self._instance.turn_off()
