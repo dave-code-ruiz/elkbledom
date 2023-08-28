@@ -5,9 +5,11 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 
-Home Assistant integration for LED STRIP or LED Desktop light (lighbar) NAME ELK BLEDOM with android/iphone mobile app duoCo Strip (https://play.google.com/store/apps/details?id=shy.smartled&hl=es&gl=US) or mobile app Lantern Lotus (https://play.google.com/store/apps/details?id=wl.smartled&hl=es&gl=US).
+Home Assistant integration for LED STRIP or LED Desktop light (lightbar) NAME ELK BLEDOM with android/iphone mobile app duoCo Strip (https://play.google.com/store/apps/details?id=shy.smartled&hl=es&gl=US) or mobile app Lantern Lotus (https://play.google.com/store/apps/details?id=wl.smartled&hl=es&gl=US).
 
 I buy it in amazon spain (https://www.amazon.es/gp/product/B00VFME0Q2/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
+
+Or lightbar like this (https://www.amazon.es/bedee-Regulable-Inteligente-Bluetooth-Dormitorio/dp/B0BNPMGR1H/ref=sr_1_9?__mk_es_ES=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=18HFFN7O1A35N&keywords=L%C3%A1mpara%2Bde%2BPie%2BLED%2Bpara%2BSala%2Bde%2BEstar%2BRegulable%2BLED%2BNegro%2Bde%2B1%2C6%2Bm%2Bcon%2BControl%2BRemoto%2By%2BAplicaci%C3%B3n&qid=1693216233&sprefix=l%C3%A1mpara%2Bde%2Bpie%2Bled%2Bpara%2Bsala%2Bde%2Bestar%2Bregulable%2Bled%2Bnegro%2Bde%2B1%2B6%2Bm%2Bcon%2Bcontrol%2Bremoto%2By%2Baplicaci%C3%B3n%2B%2Caps%2C129&sr=8-9&th=1)
 
 New support for MELK strip, you can buy it in amazon spain (https://www.amazon.es/distancia-Bluetooth-aplicaci%C3%B3n-sincronizaci%C3%B3n-habitaci%C3%B3n/dp/B09VC77GCZ/ref=sr_1_1?__mk_es_ES=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=1FOMRSJ89HMAE&keywords=B09VC77GCZ&qid=1692875413&sprefix=b09vc77gcz%2Caps%2C81&sr=8-1&th=1) or search "B09VC77GCZ" in your amazon country shop
 
