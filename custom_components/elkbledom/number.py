@@ -27,7 +27,7 @@ async def async_setup_entry(
     instance = hass.data[DOMAIN][config_entry.entry_id]
     await instance.update()
     async_add_entities(
-        [BLEDOMSlider(instance, "Effect Speed", config_entry.entry_id)])
+        [BLEDOMSlider(instance, "Effect Speed " + config_entry.data["name"], config_entry.entry_id)])
 
 class BLEDOMSlider(NumberEntity):
     """Blauberg Fan entity"""
@@ -36,7 +36,7 @@ class BLEDOMSlider(NumberEntity):
         self._instance = bledomInstance
         self._attr_name = attr_name
         self._attr_unique_id = self._instance.address
-        self._effect_speed = None
+        self._effect_speed = 0
 
     @property
     def available(self):
