@@ -337,9 +337,16 @@ class BLEDOMInstance:
         await self._write([0x7e, 0x00, 0x05, 0x02, color_temp_percent, brightness_percent, 0x00, 0x00, 0xef])
 
     @retry_bluetooth_connection_error
-    async def set_white(self):
-        await self._write([0x7e, 0x00, 0x01, 0x99, 0x00, 0x00, 0x00, 0x00, 0xef])
-        self._brightness = 255
+    async def set_color(self, rgb: Tuple[int, int, int]):
+        r, g, b = rgb
+        await self._write([0x7e, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xef])
+        self._rgb_color = rgb
+
+    @DeprecationWarning
+    @retry_bluetooth_connection_error
+    async def set_white(self, intensity: int):
+        await self._write([0x7e, 0x00, 0x01, int(intensity*100/255), 0x00, 0x00, 0x00, 0x00, 0xef])
+        self._brightness = intensity
 
     @retry_bluetooth_connection_error
     async def set_brightness(self, intensity: int):
@@ -367,21 +374,6 @@ class BLEDOMInstance:
     async def turn_off(self):
         await self._write(self._turn_off_cmd)
         self._is_on = False
-
-    @retry_bluetooth_connection_error
-    async def set_color(self, rgb: Tuple[int, int, int]):
-        r, g, b = rgb
-        await self._write([0x7e, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xef])
-        self._rgb_color = rgb
-
-    @retry_bluetooth_connection_error
-    async def set_color_temp(self, value: int):
-        if value > 100:
-            value = 100
-        warm = value
-        cold = 100 - value
-        await self._write([0x7e, 0x00, 0x05, 0x02, warm, cold, 0x00, 0x00, 0xef])
-        self._color_temp = warm
 
     @retry_bluetooth_connection_error
     async def set_scheduler_on(self, days: int, hours: int, minutes: int, enabled: bool):
@@ -426,6 +418,7 @@ class BLEDOMInstance:
             #await self._device.start_notify(self._read_uuid, create_status_callback(future))
             #await self._write([0x7e, 0x00, 0x01, 0xfa, 0x00, 0x00, 0x00, 0x00, 0xef])
             #await self._write([0x7e, 0x00, 0x10])
+            #await self._write([0xef, 0x01, 0x77])
             #await self._write([0x10])
             #await asyncio.wait_for(future, 5.0)
             #await self._device.stop_notify(self._read_uuid)
@@ -486,14 +479,30 @@ class BLEDOMInstance:
 
     async def _login_command(self):
         try:
-            if self._device.name.lower().startswith("melk"):
+            if self._device.name.lower().startswith("modelx"):
                 LOGGER.debug("Executing login command for: %s; RSSI: %s", self.name, self.rssi)
-                self._write([0x7e, 0x07, 0x83])
+                await self._write([0x7e, 0x07, 0x83])
                 await asyncio.sleep(1)
-                self._write([0x7e, 0x04, 0x04])
+                await self._write([0x7e, 0x04, 0x04])
                 await asyncio.sleep(1)
             else:
                 LOGGER.debug("login command for: %s not needed; RSSI: %s", self.name, self.rssi)
+
+        except (Exception) as error:
+            LOGGER.error("Error login command: %s", error)
+            track = traceback.format_exc()
+            LOGGER.debug(track)
+
+    async def _init_command(self):
+        try:
+            if self._device.name.lower().startswith("melk"):
+                LOGGER.debug("Executing init command for: %s; RSSI: %s", self.name, self.rssi)
+                await self._write([0x7e, 0x07, 0x83])
+                await asyncio.sleep(1)
+                await self._write([0x7e, 0x04, 0x04])
+                await asyncio.sleep(1)
+            else:
+                LOGGER.debug("init command for: %s not needed; RSSI: %s", self.name, self.rssi)
 
         except (Exception) as error:
             LOGGER.error("Error login command: %s", error)

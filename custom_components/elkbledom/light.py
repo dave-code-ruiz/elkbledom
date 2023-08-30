@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import voluptuous as vol
 from typing import Any, Optional, Tuple
@@ -74,29 +76,10 @@ class BLEDOMLight(LightEntity):
         return EFFECTS_list
 
     @property
-    def effect(self):
-        return self._attr_effect
-
-    @property
-    def supported_features(self) -> int:
-        """Flag supported features."""
-        return self._attr_supported_features
-
-    @property
-    def supported_color_modes(self) -> int:
-        """Flag supported color modes."""
-        return self._attr_supported_color_modes
-
-    @property
     def rgb_color(self):
         if self._instance.rgb_color:
             return match_max_scale((255,), self._instance.rgb_color)
         return None
-
-    @property
-    def color_mode(self) -> ColorMode | str | None:
-        """Return the color mode of the light."""
-        return self._attr_color_mode
 
     @property
     def device_info(self):
@@ -115,10 +98,10 @@ class BLEDOMLight(LightEntity):
         """No polling needed for a demo light."""
         return False
 
-    # def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
-    #     rgb = match_max_scale((255,), color)
-    #     res = tuple(color * set_brightness // 255 for color in rgb)
-    #     return res
+    def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
+        rgb = match_max_scale((255,), color)
+        res = tuple(color * set_brightness // 255 for color in rgb)
+        return res
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         LOGGER.debug(f"Params turn on: {kwargs} color mode: {self._attr_color_mode}")
@@ -128,7 +111,7 @@ class BLEDOMLight(LightEntity):
                 LOGGER.debug("Change color to white to reset led strip when other infrared control interact")
                 self._attr_color_mode = ColorMode.WHITE
                 self._attr_effect = None
-                await self._instance.set_white()
+                await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250))
         
         if ATTR_BRIGHTNESS in kwargs and kwargs[ATTR_BRIGHTNESS] != self.brightness and self.rgb_color != None:
             await self._instance.set_brightness(kwargs[ATTR_BRIGHTNESS])
@@ -142,7 +125,7 @@ class BLEDOMLight(LightEntity):
         if ATTR_WHITE in kwargs:
             self._attr_color_mode = ColorMode.WHITE
             self._attr_effect = None
-            await self._instance.set_white()
+            await self._instance.set_color(self._transform_color_brightness((255, 255, 255), kwargs[ATTR_WHITE]))
 
         if ATTR_RGB_COLOR in kwargs:
             self._attr_color_mode = ColorMode.RGB
