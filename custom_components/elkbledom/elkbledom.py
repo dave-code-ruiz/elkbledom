@@ -14,7 +14,7 @@ from bleak_retry_connector import (
 )
 from homeassistant.components.bluetooth import async_discovered_service_info, async_ble_device_from_address
 from home_assistant_bluetooth import BluetoothServiceInfo
-from bluetooth_sensor_state_data import BluetoothData
+#from bluetooth_sensor_state_data import BluetoothData
 from typing import Any, TypeVar, cast, Tuple
 from collections.abc import Callable
 import traceback
@@ -127,7 +127,8 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
 
     return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
 
-class DeviceData(BluetoothData):
+#class DeviceData(BluetoothData):
+class DeviceData():
     def __init__(self, hass, discovery_info):
         self._discovery = discovery_info
         self._supported = self._discovery.name.lower().startswith("elk-ble") or self._discovery.name.lower().startswith("elk-bulb") or self._discovery.name.lower().startswith("ledble") or self._discovery.name.lower().startswith("melk")
