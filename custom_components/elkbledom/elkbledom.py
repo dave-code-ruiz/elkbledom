@@ -14,6 +14,7 @@ from bleak_retry_connector import (
 )
 from homeassistant.components.bluetooth import async_discovered_service_info, async_ble_device_from_address
 from home_assistant_bluetooth import BluetoothServiceInfo
+#throw error, see issue #43
 #from bluetooth_sensor_state_data import BluetoothData
 from typing import Any, TypeVar, cast, Tuple
 from collections.abc import Callable
