@@ -161,7 +161,8 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         except (Exception) as error:
             return error
         finally:
-            await self._instance.stop()
+            if self._instance:
+                await self._instance.stop()
 
     @staticmethod
     @callback
