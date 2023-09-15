@@ -111,6 +111,19 @@ Live state polling: External control (i.e. IR remote) state changes NO reflect i
 
 [Light modes] (blinking, fading, etc) is not yet supported.
 
+## enable debug mode
+
+Use debug log to see more information of posible errors and post it in your issue description
+
+In configuration.yaml:
+
+```
+logger:
+  default: info
+  logs:
+    custom_components.elkbledom: debug
+```
+
 ## Known issues
 
 1. Live state polling dont work.
