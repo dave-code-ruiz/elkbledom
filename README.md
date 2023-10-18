@@ -124,6 +124,36 @@ logger:
     custom_components.elkbledom: debug
 ```
 
+## Examples
+
+Create button to turn on:
+
+show_name: true
+show_icon: true
+name: turn on
+type: button
+tap_action:
+  action: toggle
+entity: light.tiraled
+
+Create button to set color:
+
+show_name: true
+show_icon: true
+name: Red
+type: button
+tap_action:
+  action: call-service
+  service: light.turn_on
+  target:
+    entity_id: light.test
+  data:
+    rgb_color:
+      - 255
+      - 0
+      - 0
+    brightness: 255
+
 ## Known issues
 
 1. Live state polling dont work.
