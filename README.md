@@ -17,7 +17,7 @@ New support for MELK strip, you can buy it in amazon spain (https://www.amazon.e
 
 You can scan BT device with BTScan.py in my repository exec: ``` sudo python3 BTScan.py ```, code supports led strips whose name begins with "ELK-BLE" or "MELK" or "ELK-BULB".
 
-Code supports controlling lights in HA with write uuid: 0000fff3-0000-1000-8000-00805f9b34fb
+Code supports controlling lights in HA with write uuid: 0000fff3-0000-1000-8000-00805f9b34fb or 0000ffe1-0000-1000-8000-00805f9b34fb
 
 You can know your uuid with gatttool:
 
