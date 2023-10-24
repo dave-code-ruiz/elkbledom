@@ -55,7 +55,7 @@ If your strip show some uuid like:
      
 Go to your correct repository: https://www.home-assistant.io/integrations/led_ble/
 
-If your uuid is none of the above, create issue with your results uuid and handle information
+If your uuid is none of the above, create issue with: 1- strip name 2- your results uuid 3- handle information
 
 You can use gatttool to try discover your turn on/off command with:
 
