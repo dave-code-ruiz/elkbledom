@@ -44,6 +44,8 @@ handle: 0x0008, char properties: 0x06, char value handle: 0x0009, uuid: 0000fff3
 
 If your strip show some uuid like "0000fff3-0000-1000-8000-00805f9b34fb" , your strip it is supported
 
+If your strip show some uuid like "0000ffe1-0000-1000-8000-00805f9b34fb" , your strip it is supported
+
 If your strip show some uuid like "0000ff01-0000-1000-8000-00805f9b34fb", go to your correct repository: https://github.com/raulgbcr/lednetwf_ble
 
 If your strip show some uuid like:
