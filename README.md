@@ -11,7 +11,7 @@ I buy it in amazon spain (https://www.amazon.es/gp/product/B00VFME0Q2)
 
 Or lightbar like this (https://www.amazon.es/bedee-Regulable-Inteligente-Bluetooth-Dormitorio/dp/B0BNPMGR1H)
 
-New support for MELK strip, you can buy it in amazon spain (https://www.amazon.es/distancia-Bluetooth-aplicaci%C3%B3n-sincronizaci%C3%B3n-habitaci%C3%B3n/dp/B09VC77GCZ) or search "B09VC77GCZ" in your amazon country shop
+New support for MELK strip, you can buy it in amazon spain (https://www.amazon.es/distancia-Bluetooth-aplicaci%C3%B3n-sincronizaci%C3%B3n-habitaci%C3%B3n/dp/B09VC77GCZ) or search "B09VC77GCZ" in your amazon country shop.  MELK device confirmed working: https://www.amazon.com/dp/B07R7NTX6D 
 
 ## Supported strips
 
