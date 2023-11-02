@@ -129,7 +129,7 @@ logger:
 ## Examples
 
 Create button to turn on:
-
+```
 show_name: true
 show_icon: true
 name: turn on
@@ -137,9 +137,10 @@ type: button
 tap_action:
   action: toggle
 entity: light.tiraled
+```
 
 Create button to set color:
-
+```
 show_name: true
 show_icon: true
 name: Red
@@ -155,7 +156,7 @@ tap_action:
       - 0
       - 0
     brightness: 255
-
+```
 ## Known issues
 
 1. Live state polling dont work.
