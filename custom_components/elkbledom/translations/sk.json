@@ -1,0 +1,45 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "mac": "Bluetooth MAC adresa",
+                    "name": "Názov"
+                },
+                "title": "Vyberte si svetlo Elkbledom. Skontrolujte, či je svetlo v dohľade na overenie."
+            },
+            "validate": {
+                "data": {
+                    "retry": "Znova skúsiť overiť pripojenie?",
+                    "flicker": "Blikalo svetlo?"
+                },
+                "title": "Overte pripojenie Elkbledom"
+            },
+            "manual": {
+                "data": {
+                    "mac": "Bluetooth MAC adresa",
+                    "name": "Názov"
+                },
+                "title": "Zadajte adresu MAC bluetooth"
+            }
+        },
+        "error": {
+            "connect": "Nedá sa pripojiť k Elbledom"
+        },
+        "abort": {
+            "cannot_validate": "Nie je možné overiť Elkbledom light",
+            "cannot_connect": "Nedá sa pripojiť k Elbledom"
+        }
+    },
+    "options": {
+        "step": {
+          "user": {
+            "data": {
+              "reset": "Resetujte farbu po zapnutí LED",
+              "delay": "Oneskorenie odpojenia (0 sa rovná nikdy sa neodpojí)"
+            }
+          }
+        }
+      },
+    "title": "Elkbledom"
+}
