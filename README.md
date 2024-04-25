@@ -159,8 +159,8 @@ tap_action:
 ```
 ## Known issues
 
-1. Live state polling dont work.
-
+1. If you use mobile app to connect to strip, you need to disconnect it first, only one device can be connected over bluetooth to led strip.
+2. Live state polling dont work.
 3. I am waiting for read status value:
 
             ```
