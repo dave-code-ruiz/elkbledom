@@ -11,11 +11,32 @@ I buy it in amazon spain (https://www.amazon.es/gp/product/B00VFME0Q2)
 
 Or lightbar like this (https://www.amazon.es/bedee-Regulable-Inteligente-Bluetooth-Dormitorio/dp/B0BNPMGR1H)
 
-New support for MELK strip, you can buy it in amazon spain (https://www.amazon.es/distancia-Bluetooth-aplicaci%C3%B3n-sincronizaci%C3%B3n-habitaci%C3%B3n/dp/B09VC77GCZ) or search "B09VC77GCZ" in your amazon country shop.  MELK device confirmed working: https://www.amazon.com/dp/B07R7NTX6D 
+New support for MELK strip, you can buy it in amazon spain (https://www.amazon.es/distancia-Bluetooth-aplicaci%C3%B3n-sincronizaci%C3%B3n-habitaci%C3%B3n/dp/B09VC77GCZ) or search "B09VC77GCZ" in your amazon country shop. MELK device confirmed working: https://www.amazon.com/dp/B07R7NTX6D
+
+## Dependencies
+
+`gattool` is used to query the BLE device.
+It is available in `bluez-deprecated` for Fedora:
+
+```
+sudo dnf install bluez-deprecated
+```
+
+or as `bluez-deprecated-tools` in Arch:
+
+```
+paru -S bluez-deprecated-tools
+```
+
+BTScan.py relies on bluepy, and the integration relies on bleak-retry-connector and bleak pip packages.
+
+```
+pip install -r requirements.txt
+```
 
 ## Supported strips
 
-You can scan BT device with BTScan.py in my repository exec: ``` sudo python3 BTScan.py ```, code supports led strips whose name begins with "ELK-BLE" or "MELK" or "ELK-BULB".
+You can scan BT device with BTScan.py in my repository exec: `sudo python3 BTScan.py`, code supports led strips whose name begins with "ELK-BLE" or "MELK" or "ELK-BULB".
 
 Code supports controlling lights in HA with write uuid: 0000fff3-0000-1000-8000-00805f9b34fb or 0000ffe1-0000-1000-8000-00805f9b34fb
 
@@ -42,17 +63,17 @@ handle: 0x0008, char properties: 0x06, char value handle: 0x0009, uuid: 0000fff3
 
 ```
 
-If your strip show some uuid like "0000fff3-0000-1000-8000-00805f9b34fb" , your strip it is supported
+If your strip show some uuid like "**0000fff3**-0000-1000-8000-00805f9b34fb" , your strip it is supported
 
-If your strip show some uuid like "0000ffe1-0000-1000-8000-00805f9b34fb" , your strip it is supported
+If your strip show some uuid like "**0000ffe1**-0000-1000-8000-00805f9b34fb" , your strip it is supported
 
-If your strip show some uuid like "0000ff01-0000-1000-8000-00805f9b34fb", go to your correct repository: https://github.com/raulgbcr/lednetwf_ble
+If your strip show some uuid like "**0000ff01**-0000-1000-8000-00805f9b34fb", go to your correct repository: https://github.com/raulgbcr/lednetwf_ble
 
 If your strip show some uuid like:
 
     "0000xxxx-0000-1000-8000-00805f9b34fb"
     xxxx can be one of these values ("ff01", "ffd5", "ffd9", "ffe5", "ffe9", "ff02", "ffd0", "ffd4", "ffe0", "ffe4")
-     
+
 Go to your correct repository: https://www.home-assistant.io/integrations/led_ble/
 
 If your uuid is none of the above, create issue with: 1- strip name 2- your results uuid 3- handle information
@@ -63,7 +84,9 @@ You can use gatttool to try discover your turn on/off command with:
 sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e00040100000000ef # POWERON
 sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004000000ff00ef # POWEROFF
 ```
+
 or
+
 ```
 sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004f00001ff00ef # POWER ON
 sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e000503ff000000ef # RED
@@ -94,26 +117,37 @@ The setup needs to be repeated for each light.
 
 After Setup, you can config two elkbledom params under Settings -> Integrations -> search elkbledom integration -> Config.
 
-Reset color when led turn on: When led strip turn on, led reset to color white or not. This is needed if you want because i don´t know led strip state and is needed a reset.
+#### Reset color when led turn on
 
-Disconnect delay or timeout: You can configure time led strip disconnected from HA (0 equal never disconnect).
+When led strip turn on, led reset to color white or not. This is needed if you want because i don´t know led strip state and is needed a reset.
+
+#### Disconnect delay or timeout
+
+You can configure time led strip disconnected from HA (0 equal never disconnect).
 
 ## Features
-Discovery: Automatically discover ELK BLEDOM based lights without manually hunting for Bluetooth MAC address
 
-On/Off/RGB/Brightness support
+#### Discovery
 
-Emulated RGB brightness: Supports adjusting brightness of RGB lights
+Automatically discover ELK BLEDOM based lights without manually hunting for Bluetooth MAC address
 
-Multiple light support
+#### On/Off/RGB/Brightness support
+
+#### Emulated RGB brightness
+
+Supports adjusting brightness of RGB lights
+
+#### Multiple light support
 
 ## Not supported
 
-Live state polling: External control (i.e. IR remote) state changes NO reflect in Home Assistant and NO updated.
+#### Live state polling
 
-[Light modes] (blinking, fading, etc) is not yet supported.
+External control (i.e. IR remote) state changes do NOT reflect in Home Assistant and are NOT updated.
 
-## enable debug mode
+#### [Light modes] (blinking, fading, etc) are not yet supported.
+
+## Enable debug mode
 
 Use debug log to see more information of posible errors and post it in your issue description
 
@@ -129,6 +163,7 @@ logger:
 ## Examples
 
 Create button to turn on:
+
 ```
 show_name: true
 show_icon: true
@@ -140,6 +175,7 @@ entity: light.tiraled
 ```
 
 Create button to set color:
+
 ```
 show_name: true
 show_icon: true
@@ -157,24 +193,26 @@ tap_action:
       - 0
     brightness: 255
 ```
+
 ## Known issues
 
-1. If you use mobile app to connect to strip, you need to disconnect it first, only one device can be connected over bluetooth to led strip.
-2. Live state polling dont work.
-3. I am waiting for read status value:
+1.  Only one device can be connected over bluetooth to the led strip. If you are using the mobile app to connect to strip, or used `gatttool` to query the device, you need to disconnect from the LED strip first.
+2.  Live state polling doesn't work.
+3.  I am waiting for read status value:
 
             ```
-            
+
             future = asyncio.get_event_loop().create_future()
             await self._device.start_notify(self._read_uuid, create_status_callback(future))
             # PROBLEMS WITH STATUS VALUE, I HAVE NOT VALUE TO WRITE AND GET STATUS
             await self._write(bytearray([0xEF, 0x01, 0x77]))
             await asyncio.wait_for(future, 5.0)
             await self._device.stop_notify(self._read_uuid)
-            
+
             ```
 
 ## Credits
+
 This integration will not be possible without the awesome work of this github repositories:
 
 https://www.home-assistant.io/integrations/led_ble/
