@@ -36,7 +36,7 @@
           "user": {
             "data": {
               "reset": "Reset color when led turn on",
-              "delay": "Disconnect delay (0 equal never disconnect)"
+              "delay": "Disconnect delay in seconds (0 equal never disconnect)"
             }
           }
         }

@@ -36,7 +36,7 @@
           "user": {
             "data": {
               "reset": "LED açıldığında renk sıfırlansın",
-              "delay": "Bağlantı kesme gecikmesi (0 hiçbir zaman bağlantıyı kesmez anlamına gelir)"
+              "delay": "Saniye cinsinden bağlantı kesme gecikmesi (0 hiçbir zaman bağlantıyı kesmez anlamına gelir)"
             }
           }
         }

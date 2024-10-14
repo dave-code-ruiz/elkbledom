@@ -36,7 +36,7 @@
           "user": {
             "data": {
               "reset": "Resetear color cuando se encienda el led",
-              "delay": "Tiempo de espera para desconexión (0 para no desconectar nunca)"
+              "delay": "Tiempo de espera para desconexión en segundos (0 para no desconectar nunca)"
             }
           }
         }
