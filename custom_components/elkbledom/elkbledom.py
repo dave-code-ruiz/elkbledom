@@ -565,16 +565,21 @@ class BLEDOMInstance:
         )
         await self._execute_disconnect()
 
+
     async def _execute_disconnect(self) -> None:
         """Execute disconnection."""
         async with self._connect_lock:
             read_char = self._read_uuid
             client = self._client
+            LOGGER.debug("Disconnecting: READ_UUID=%s, CLIENT_CONNECTED=%s", read_char, client.is_connected if client else "No Client")
             self._expected_disconnect = True
             self._client = None
             self._write_uuid = None
             self._read_uuid = None
             if client and client.is_connected:
-                if not self._device.name.lower().startswith("melk"):
-                    await client.stop_notify(read_char)
-                await client.disconnect()
+                try:
+                    if not self._device.name.lower().startswith("melk"):
+                        await client.stop_notify(read_char)
+                    await client.disconnect()
+                except Exception as e:
+                    LOGGER.error("Error during disconnection: %s", e)
