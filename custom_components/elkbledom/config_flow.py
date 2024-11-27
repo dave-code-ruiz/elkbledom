@@ -34,11 +34,28 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._discovery_info: BluetoothServiceInfoBleak | None = None
         self._discovered_devices = []
 
+#    async def async_step_bluetooth(
+#        self, discovery_info: BluetoothServiceInfoBleak
+#    ) -> FlowResult:
+#        """Handle the bluetooth discovery step."""
+#        LOGGER.debug("Discovered bluetooth devices, step bluetooth, : %s , %s", discovery_info.address, discovery_info.name)
+#        await self.async_set_unique_id(discovery_info.address)
+#        self._abort_if_unique_id_configured()
+#        device = DeviceData(self.hass, discovery_info)
+#        if device.is_supported:
+#            self._discovered_devices.append(device)
+#            return await self.async_step_bluetooth_confirm()
+#        else:
+#            return self.async_abort(reason="not_supported")
+
     async def async_step_bluetooth(
         self, discovery_info: BluetoothServiceInfoBleak
     ) -> FlowResult:
-        """Handle the bluetooth discovery step."""
-        LOGGER.debug("Discovered bluetooth devices, step bluetooth, : %s , %s", discovery_info.address, discovery_info.name)
+        LOGGER.debug("Discovered device: address=%s, name=%s", discovery_info.address, discovery_info.name)
+        if not discovery_info.address or not discovery_info.name:
+            LOGGER.error("Invalid discovery info: %s", discovery_info)
+            return self.async_abort(reason="invalid_discovery_info")
+
         await self.async_set_unique_id(discovery_info.address)
         self._abort_if_unique_id_configured()
         device = DeviceData(self.hass, discovery_info)
@@ -46,7 +63,10 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             self._discovered_devices.append(device)
             return await self.async_step_bluetooth_confirm()
         else:
+            LOGGER.debug("Device not supported: %s", discovery_info.name)
             return self.async_abort(reason="not_supported")
+
+
 
     async def async_step_bluetooth_confirm(
         self, user_input: dict[str, Any] | None = None
