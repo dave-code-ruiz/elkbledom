@@ -197,6 +197,9 @@ tap_action:
 ## Known issues
 
 1.  Only one device can be connected over bluetooth to the led strip. If you are using the mobile app to connect to strip, or used `gatttool` to query the device, you need to disconnect from the LED strip first.
+    ```
+    BleakOutOfConnectionSlotsError: Failed to connect after 9 attempt(s): No backend with an available connection slot that can reach address
+    ```    
 2.  Live state polling doesn't work.
 3.  I am waiting for read status value:
 
