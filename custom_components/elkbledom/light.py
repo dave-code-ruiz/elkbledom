@@ -8,8 +8,7 @@ from .elkbledom import BLEDOMInstance
 from .const import DOMAIN, EFFECTS, EFFECTS_list
 
 from homeassistant.const import CONF_MAC
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import config_validation as cv, entity_platform
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.light import (
     PLATFORM_SCHEMA,
@@ -26,35 +25,21 @@ from homeassistant.util.color import (match_max_scale)
 from homeassistant.helpers import device_registry
 
 PARALLEL_UPDATES = 0  # fix entity_platform parallel_updates Semaphore
+ATTR_ENTITY = 'entity'
 
 LOGGER = logging.getLogger(__name__)
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_MAC): cv.string
 })
 
+SET_COLOR_SCHEMA = vol.Schema(
+    {vol.Required(ATTR_ENTITY): cv.entity_ids, vol.Required(ATTR_RGB_COLOR): cv.string}
+)
+
 async def async_setup_entry(hass, config_entry, async_add_devices):
     instance = hass.data[DOMAIN][config_entry.entry_id]
     await instance.update()
     async_add_devices([BLEDOMLight(instance, config_entry.data["name"], config_entry.entry_id)])
-
-    platform = entity_platform.async_get_current_platform()
-
-    # This will call Entity.set_sleep_timer(sleep_time=VALUE)
-    platform.async_register_entity_service(
-        "set_color",
-        {},
-        "service_set_color",
-    )
-    
-async def service_set_color(hass: HomeAssistant, call: ServiceCall):
-        """Service for send raw command to device.
-        :param call: `entity` - required param, all other params - optional
-        """
-        params = dict(call.data)
-        entity_id = str(params.pop('entity'))
-        rgb = str(params.pop('r')),str(params.pop('g')),str(params.pop('b'))
-        instance = hass.data[DOMAIN][entity_id]
-        await instance.set_color(rgb)
 
 class BLEDOMLight(LightEntity):
     def __init__(self, bledomInstance: BLEDOMInstance, name: str, entry_id: str) -> None:
