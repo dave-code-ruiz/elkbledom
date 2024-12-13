@@ -25,16 +25,11 @@ from homeassistant.util.color import (match_max_scale)
 from homeassistant.helpers import device_registry
 
 PARALLEL_UPDATES = 0  # fix entity_platform parallel_updates Semaphore
-ATTR_ENTITY = 'entity'
 
 LOGGER = logging.getLogger(__name__)
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_MAC): cv.string
 })
-
-SET_COLOR_SCHEMA = vol.Schema(
-    {vol.Required(ATTR_ENTITY): cv.entity_ids, vol.Required(ATTR_RGB_COLOR): cv.string}
-)
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
     instance = hass.data[DOMAIN][config_entry.entry_id]
