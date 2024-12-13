@@ -1,9 +1,0 @@
-set_color:
-  description: Sends a command to change color.
-  fields:
-    entity:
-      description: entity ID to send command to.
-      example: 'light.bedroom_strip'
-    color:
-      description: A color to change.
-      example: black or ff55ff
