@@ -28,7 +28,9 @@
         },
         "abort": {
             "cannot_validate": "Elkbledom ışığı doğrulanamıyor",
-            "cannot_connect": "Elkbledom'a bağlanılamıyor"
+            "cannot_connect": "Elkbledom'a bağlanılamıyor",
+            "not_supported": "ElkBledom ???? desteklenmiyor",
+            "invalid_discovery_info": "Bluetooth aygtnda geersiz keif bilgisi"
         }
     },
     "options": {

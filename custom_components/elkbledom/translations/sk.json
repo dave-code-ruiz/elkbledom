@@ -28,7 +28,9 @@
         },
         "abort": {
             "cannot_validate": "Nie je možné overiť Elkbledom light",
-            "cannot_connect": "Nedá sa pripojiť k Elbledom"
+            "cannot_connect": "Nedá sa pripojiť k Elbledom",
+            "not_supported": "Svetlo Elk Bledom nie je podporovane",
+            "invalid_discovery_info": "Neplatne informacie o objaveni v zariadeni bluetooth"
         }
     },
     "options": {

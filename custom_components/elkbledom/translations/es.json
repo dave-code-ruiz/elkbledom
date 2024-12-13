@@ -28,7 +28,9 @@
         },
         "abort": {
             "cannot_validate": "No se puede validar la conexiÃ³n",
-            "cannot_connect": "No se puede conectar con la tira led"
+            "cannot_connect": "No se puede conectar con la tira led",
+            "not_supported": "Tira led no soportada",
+            "invalid_discovery_info": "No se encuentra información de la tira led"
         }
     },
     "options": {

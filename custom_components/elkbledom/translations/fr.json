@@ -28,7 +28,9 @@
         },
         "abort": {
             "cannot_validate": "Echec de validation de la lumi?re Elkbledom",
-            "cannot_connect": "Echec de la connexion ? Elkbledom"
+            "cannot_connect": "Echec de la connexion ? Elkbledom",
+            "not_supported": "La lumi?re ElkBledom n'est pas prise en charge",
+            "invalid_discovery_info": "Informations de d?couverte non valides sur le p?riph?rique Bluetooth"
         }
     },
     "options": {

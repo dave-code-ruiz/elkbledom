@@ -28,7 +28,9 @@
         },
         "abort": {
             "cannot_validate": "Unable to validate Elkbledom light",
-            "cannot_connect": "Unable to connect to Elkbledom"
+            "cannot_connect": "Unable to connect to Elkbledom",
+            "not_supported": "Elkbledom light not supported",
+            "invalid_discovery_info": "Invalid discovery info in bluetooth device"
         }
     },
     "options": {

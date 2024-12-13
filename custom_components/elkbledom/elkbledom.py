@@ -1,6 +1,5 @@
 import asyncio
 from datetime import datetime
-from homeassistant.components import bluetooth
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from bleak.backends.device import BLEDevice
@@ -67,25 +66,31 @@ LOGGER = logging.getLogger(__name__)
 NAME_ARRAY = ["ELK-BLE",
               "LEDBLE",
               "MELK",
-              "ELK-BULB"]
+              "ELK-BULB",
+              "ELK-LAMPL"]
 WRITE_CHARACTERISTIC_UUIDS = ["0000fff3-0000-1000-8000-00805f9b34fb",
                               "0000ffe1-0000-1000-8000-00805f9b34fb",
+                              "0000fff3-0000-1000-8000-00805f9b34fb",
                               "0000fff3-0000-1000-8000-00805f9b34fb",
                               "0000fff3-0000-1000-8000-00805f9b34fb"]
 READ_CHARACTERISTIC_UUIDS  = ["0000fff4-0000-1000-8000-00805f9b34fb",
                               "0000ffe2-0000-1000-8000-00805f9b34fb",
                               "0000fff4-0000-1000-8000-00805f9b34fb",
+                              "0000fff4-0000-1000-8000-00805f9b34fb",
                               "0000fff4-0000-1000-8000-00805f9b34fb"]
 TURN_ON_CMD = [[0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+               [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef],
                [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef],
                [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef],
                [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef]]
 TURN_OFF_CMD = [[0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+                [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]]
-MIN_COLOR_TEMPS_K = [2700,2700,2700,2700]
-MAX_COLOR_TEMPS_K = [6500,6500,6500,6500]
+
+MIN_COLOR_TEMPS_K = [2700,2700,2700,2700,2700]
+MAX_COLOR_TEMPS_K = [6500,6500,6500,6500,6500]
 
 DEFAULT_ATTEMPTS = 3
 #DISCONNECT_DELAY = 120
@@ -132,7 +137,7 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
 class DeviceData():
     def __init__(self, hass, discovery_info):
         self._discovery = discovery_info
-        self._supported = self._discovery.name.lower().startswith("elk-ble") or self._discovery.name.lower().startswith("elk-bulb") or self._discovery.name.lower().startswith("ledble") or self._discovery.name.lower().startswith("melk")
+        self._supported = any(self._discovery.name.lower().startswith(option.lower()) for option in NAME_ARRAY)
         self._address = self._discovery.address
         self._name = self._discovery.name
         self._rssi = self._discovery.rssi
@@ -150,20 +155,6 @@ class DeviceData():
         # if not self._bledevice:
         #     raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
         
-
-    # def __init__(self, *args):
-    #     if isinstance(args[0], BluetoothServiceInfoBleak):
-    #         self._discovery = args[0]
-    #         self._supported = self._discovery.name.lower().startswith("elk-ble") or self._discovery.name.lower().startswith("elk-bulb") or self._discovery.name.lower().startswith("ledble") or self._discovery.name.lower().startswith("melk")
-    #         self.address = self._discovery.address
-    #         self.name = self._discovery.name
-    #         self.rssi = self._discovery.rssi
-    #     else:
-    #         self._supported = args[0]
-    #         self.address = args[1]
-    #         self.name = args[2]
-    #         self.rssi = args[3]
-
     @property
     def is_supported(self) -> bool:
         return self._supported
@@ -475,9 +466,12 @@ class BLEDOMInstance:
             #login commands
             await self._login_command()
 
-            if not self._device.name.lower().startswith("melk"):
-                LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
-                await client.start_notify(self._read_uuid, self._notification_handler)
+            try:
+                if not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
+                    LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
+                    await client.start_notify(self._read_uuid, self._notification_handler)
+            except Exception as e:
+                LOGGER.error("Error during connection: %s", e)
 
     async def _login_command(self):
         try:
@@ -564,8 +558,6 @@ class BLEDOMInstance:
             self._delay,
         )
         await self._execute_disconnect()
-
-
     async def _execute_disconnect(self) -> None:
         """Execute disconnection."""
         async with self._connect_lock:
@@ -578,7 +570,7 @@ class BLEDOMInstance:
             self._read_uuid = None
             if client and client.is_connected:
                 try:
-                    if not self._device.name.lower().startswith("melk"):
+                    if not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
                         await client.stop_notify(read_char)
                     await client.disconnect()
                 except Exception as e:

@@ -28,7 +28,9 @@
         },
         "abort": {
             "cannot_validate": "Nie można zweryfikować światła Elkbledom",
-            "cannot_connect": "Nie można połączyć się ze światłem Elkbledom"
+            "cannot_connect": "Nie można połączyć się ze światłem Elkbledom",
+            "not_supported": "wiato ElkBledom nie jest obsugiwane",
+            "invalid_discovery_info": "Nieprawidowe informacje o odkryciu w urzdzeniu Bluetooth"
         }
     },
     "options": {

@@ -5,7 +5,8 @@
       { "local_name": "ELK-BULB*" },
       { "local_name": "ELK-BLE*" },
       { "local_name": "MELK*" },
-      { "local_name": "LEDBLE*" }
+      { "local_name": "LEDBLE*" },
+      { "local_name": "ELK-LAMPL*" }
     ],
   "codeowners": ["@dave-code-ruiz"],
   "config_flow": true,
@@ -13,6 +14,6 @@
   "documentation": "https://github.com/dave-code-ruiz/elkbledom",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/dave-code-ruiz/elkbledom/issues",
-  "requirements": ["bleak-retry-connector>=1.17.1","bleak>=0.17.0"],
-  "version": "1.0.2"
+  "requirements": ["bleak-retry-connector>=3.6.0","bleak>=0.22.3"],
+  "version": "1.2.0"
 }
