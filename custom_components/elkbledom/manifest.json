@@ -14,6 +14,6 @@
   "documentation": "https://github.com/dave-code-ruiz/elkbledom",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/dave-code-ruiz/elkbledom/issues",
-  "requirements": ["bleak-retry-connector>=3.6.0","bleak>=0.22.3"],
-  "version": "1.2.0"
+  "requirements": ["bleak-retry-connector>=3.5.0","bleak>=0.22.2"],
+  "version": "1.2.2"
 }
