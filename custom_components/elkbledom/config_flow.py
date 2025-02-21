@@ -85,18 +85,21 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_manual()
             self.mac = user_input[CONF_MAC]
             self.name = user_input["name"]
-            await self.async_set_unique_id(self.mac, raise_on_progress=False)
+            result = await self.async_set_unique_id(self.mac, raise_on_progress=False)
+            if result is not None:
+                return self.async_abort(reason="already_in_progress")
             self._abort_if_unique_id_configured()
             return await self.async_step_validate()
 
         current_addresses = self._async_current_ids()
-        for discovery_info in async_discovered_service_info(self.hass):
+        discovered_devices = async_discovered_service_info(self.hass)
+        for discovery_info in discovered_devices:
             self.mac = discovery_info.address
             if self.mac in current_addresses:
                 LOGGER.debug("Device %s in current_addresses", (self.mac))
                 continue
-            if (device for device in self._discovered_devices if device.address == self.mac) != ([]):
-                #LOGGER.debug("Device with address %s in discovered_devices", self.mac)
+            if any(device.address == self.mac for device in self._discovered_devices):
+                LOGGER.debug("Device with address %s in discovered_devices, discarting duplicates", self.mac)
                 continue
             device = DeviceData(self.hass, discovery_info)
             if device.is_supported:
@@ -193,7 +196,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry):
         """Initialize options flow."""
-        self.config_entry = config_entry
+        #self.config_entry = config_entry
 
     async def async_step_init(self, _user_input=None):
         """Manage the options."""

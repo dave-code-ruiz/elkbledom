@@ -207,7 +207,7 @@ class BLEDOMInstance:
         self._expected_disconnect = False
         self._is_on = None
         self._rgb_color = None
-        self._brightness = None
+        self._brightness = 255
         self._effect = None
         self._effect_speed = None
         self._color_temp_kelvin = None
@@ -445,14 +445,19 @@ class BLEDOMInstance:
                 return
 
             LOGGER.debug("%s: Connecting; RSSI: %s", self.name, self.rssi)
-            client = await establish_connection(
-                BleakClientWithServiceCache,
-                self._device,
-                self.name,
-                self._disconnected,
-                cached_services=self._cached_services,
-                ble_device_callback=lambda: self._device,
-            )
+            try:
+                client = await establish_connection(
+                        BleakClientWithServiceCache,
+                        self._device,
+                        self.name,
+                        self._disconnected,
+                        cached_services=self._cached_services,
+                        ble_device_callback=lambda: self._device,
+                    )
+            except asyncio.TimeoutError:
+                LOGGER.error("%s: Connection attempt timed out; RSSI: %s", self.name, self.rssi)
+                return
+
             LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
             resolved = self._resolve_characteristics(client.services)
             if not resolved:
