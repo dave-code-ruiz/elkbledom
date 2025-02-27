@@ -203,7 +203,8 @@ tap_action:
     BleakOutOfConnectionSlotsError: Failed to connect after 9 attempt(s): No backend with an available connection slot that can reach address
     ```    
 2.  Live state polling doesn't work.
-3.  I am waiting for read status value:
+3.  It is possible you have interference between the LED strip and the TV remote control or another devices. When you press some buttons on the remote control, the status of the lights could be changes. 
+4.  I am waiting for read status value:
 
             ```
 
