@@ -115,6 +115,19 @@ The setup step includes discovery which will list out all ELK BLEDOM lights disc
 
 The setup needs to be repeated for each light.
 
+## Init command in MELK strips
+
+If your strip model is MELK , i have an issue open about your problem, #11 and you need to send to the strip two init commands , i dont know why , something weird, but work fine:
+
+`
+sudo gatttool -b BE:16:F8:1D:D6:66 --char-write-req -a 0x0009 -n 7e0783
+`
+`
+sudo gatttool -b BE:16:F8:1D:D6:66 --char-write-req -a 0x0009 -n 7e0404
+`
+
+after that, try to restart strip, add your strip to homeassistant and i think you could work with your strip normally
+
 ## Config
 
 After Setup, you can config two elkbledom params under Settings -> Integrations -> search elkbledom integration -> Config.
