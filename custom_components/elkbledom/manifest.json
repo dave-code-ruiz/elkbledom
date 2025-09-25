@@ -2,6 +2,7 @@
   "domain": "elkbledom",
   "name": "ElkBLEDOM",
   "bluetooth": [
+      { "local_name": "ELK-BULB2*" },
       { "local_name": "ELK-BULB*" },
       { "local_name": "ELK-BLE*" },
       { "local_name": "MELK*" },
