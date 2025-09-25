@@ -24,21 +24,21 @@
             }
         },
         "error": {
-            "connect": "Nie można nawiązać połącznenia do światła Elkbledom"
+            "connect": "Nie można nawiązać połączenia ze światłem Elkbledom"
         },
         "abort": {
             "cannot_validate": "Nie można zweryfikować światła Elkbledom",
             "cannot_connect": "Nie można połączyć się ze światłem Elkbledom",
-            "not_supported": "wiato ElkBledom nie jest obsugiwane",
-            "invalid_discovery_info": "Nieprawidowe informacje o odkryciu w urzdzeniu Bluetooth"
+            "not_supported": "Światło Elkbledom nie jest obsługiwane",
+            "invalid_discovery_info": "Nieprawidłowe dane wykrywania urządzenia Bluetooth"
         }
     },
     "options": {
         "step": {
           "user": {
             "data": {
-              "reset": "Zresetuj kolor gdy LED włączy się",
-              "delay": "Czas oczekiwania na rozłączenie w sekundach(0, aby nigdy nie rozłączać)"
+              "reset": "Zresetuj kolor gdy LED się włączy",
+              "delay": "Czas oczekiwania na rozłączenie w sekundach (0, aby nigdy nie rozłączać)"
             }
           }
         }
