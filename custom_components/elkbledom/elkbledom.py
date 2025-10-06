@@ -342,7 +342,7 @@ class BLEDOMInstance:
     @retry_bluetooth_connection_error
     async def set_color(self, rgb: Tuple[int, int, int]):
         r, g, b = rgb
-        await self._write([0x7e, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xef])
+        await self._write([0x7e, 0x00, 0x05, 0x03, int(r), int(g), int(b), 0x00, 0xef])
         self._rgb_color = rgb
 
     @DeprecationWarning
