@@ -9,6 +9,7 @@ from .elkbledom import BLEDOMInstance
 from .const import DOMAIN
 
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import device_registry
 from homeassistant.core import HomeAssistant
@@ -29,7 +30,7 @@ async def async_setup_entry(
     async_add_entities(
         [BLEDOMSlider(instance, "Effect Speed " + config_entry.data["name"], config_entry.entry_id)])
 
-class BLEDOMSlider(NumberEntity):
+class BLEDOMSlider(RestoreEntity, NumberEntity):
     """Blauberg Fan entity"""
 
     def __init__(self, bledomInstance: BLEDOMInstance, attr_name: str, entry_id: str) -> None:
@@ -80,3 +81,17 @@ class BLEDOMSlider(NumberEntity):
         """Update the current value."""
         await self._instance.set_effect_speed(int(value))
         self._effect_speed = value
+
+    async def async_added_to_hass(self) -> None:
+        """Restore previous state when entity is added to hass."""
+        await super().async_added_to_hass()
+        
+        # Restore the last known effect speed
+        if (last_state := await self.async_get_last_state()) is not None:
+            try:
+                self._effect_speed = int(float(last_state.state))
+                LOG.debug(f"Restored effect speed for {self.name}: {self._effect_speed}")
+            except (ValueError, TypeError):
+                LOG.debug(f"Could not restore effect speed for {self.name}, using default")
+        else:
+            LOG.debug(f"No previous state found for {self.name}")
