@@ -10,6 +10,7 @@ from .const import DOMAIN, EFFECTS, EFFECTS_list
 from homeassistant.const import CONF_MAC
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.light import (
     PLATFORM_SCHEMA,
     ATTR_BRIGHTNESS,
@@ -36,7 +37,7 @@ async def async_setup_entry(hass, config_entry, async_add_devices):
     await instance.update()
     async_add_devices([BLEDOMLight(instance, config_entry.data["name"], config_entry.entry_id)])
 
-class BLEDOMLight(LightEntity):
+class BLEDOMLight(RestoreEntity, LightEntity):
     def __init__(self, bledomInstance: BLEDOMInstance, name: str, entry_id: str) -> None:
         self._instance = bledomInstance
         self._entry_id = entry_id
@@ -97,6 +98,49 @@ class BLEDOMLight(LightEntity):
     def should_poll(self):
         """No polling needed for a demo light."""
         return False
+
+    async def async_added_to_hass(self) -> None:
+        """Restore previous state when entity is added to hass."""
+        await super().async_added_to_hass()
+        
+        # Restore the last known state
+        if (last_state := await self.async_get_last_state()) is not None:
+            LOGGER.debug(f"Restoring previous state for {self.name}: {last_state.state}")
+            
+            # Restore on/off state
+            if last_state.state == "on":
+                self._instance._is_on = True
+            elif last_state.state == "off":
+                self._instance._is_on = False
+            
+            # Restore brightness
+            if ATTR_BRIGHTNESS in last_state.attributes:
+                self._instance._brightness = last_state.attributes[ATTR_BRIGHTNESS]
+                LOGGER.debug(f"Restored brightness: {self._instance._brightness}")
+            
+            # Restore RGB color
+            if ATTR_RGB_COLOR in last_state.attributes:
+                self._instance._rgb_color = tuple(last_state.attributes[ATTR_RGB_COLOR])
+                self._attr_color_mode = ColorMode.RGB
+                LOGGER.debug(f"Restored RGB color: {self._instance._rgb_color}")
+            
+            # Restore color temperature
+            elif ATTR_COLOR_TEMP_KELVIN in last_state.attributes:
+                self._instance._color_temp_kelvin = last_state.attributes[ATTR_COLOR_TEMP_KELVIN]
+                self._attr_color_mode = ColorMode.COLOR_TEMP
+                LOGGER.debug(f"Restored color temp: {self._instance._color_temp_kelvin}K")
+            
+            # Restore white mode
+            elif last_state.attributes.get("color_mode") == ColorMode.WHITE:
+                self._attr_color_mode = ColorMode.WHITE
+                LOGGER.debug("Restored color mode: WHITE")
+            
+            # Restore effect
+            if ATTR_EFFECT in last_state.attributes:
+                self._attr_effect = last_state.attributes[ATTR_EFFECT]
+                LOGGER.debug(f"Restored effect: {self._attr_effect}")
+        else:
+            LOGGER.debug(f"No previous state found for {self.name}")
 
     def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
         rgb = match_max_scale((255,), color)
