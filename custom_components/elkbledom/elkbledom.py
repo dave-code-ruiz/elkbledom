@@ -336,6 +336,9 @@ class BLEDOMInstance:
         color_temp_percent = int(((value - self._min_color_temp_kelvin) * 100) / (self._max_color_temp_kelvin - self._min_color_temp_kelvin))
         if brightness is None:
             brightness = self._brightness
+        # Ensure brightness is not None before using it
+        if brightness is None:
+            brightness = 255  # Default brightness
         brightness_percent = int(brightness * 100 / 255) 
         await self._write([0x7e, 0x00, 0x05, 0x02, color_temp_percent, brightness_percent, 0x00, 0x00, 0xef])
 
@@ -472,7 +475,7 @@ class BLEDOMInstance:
             resolved = self._resolve_characteristics(client.services)
             if not resolved:
                 # Try to handle services failing to load
-                resolved = self._resolve_characteristics(await client.get_services())
+                LOGGER.warning("%s: Could not resolve characteristics from services; RSSI: %s", self.name, self.rssi)
             self._cached_services = client.services if resolved else None
 
             self._client = client
@@ -483,8 +486,11 @@ class BLEDOMInstance:
 
             try:
                 if not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
-                    LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
-                    await client.start_notify(self._read_uuid, self._notification_handler)
+                    if self._read_uuid is not None:
+                        LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
+                        await client.start_notify(self._read_uuid, self._notification_handler)
+                    else:
+                        LOGGER.warning("%s: Read UUID not resolved, skipping notifications", self.name)
             except Exception as e:
                 LOGGER.error("Error during connection: %s", e)
 
@@ -527,15 +533,40 @@ class BLEDOMInstance:
 
     def _resolve_characteristics(self, services: BleakGATTServiceCollection) -> bool:
         """Resolve characteristics."""
+        if not services:
+            LOGGER.error("%s: No services provided to resolve characteristics", self.name)
+            return False
+        
+        # Log all available characteristics for debugging
+        LOGGER.debug("%s: Available services and characteristics:", self.name)
+        for service in services:
+            LOGGER.debug("%s: Service %s", self.name, service.uuid)
+            for char in service.characteristics:
+                LOGGER.debug("%s:   Characteristic %s (properties: %s)", self.name, char.uuid, char.properties)
+        
+        # Try to find read characteristic
         for characteristic in READ_CHARACTERISTIC_UUIDS:
             if char := services.get_characteristic(characteristic):
-                self._read_uuid = char
+                self._read_uuid = char.uuid
+                LOGGER.debug("%s: Found read UUID: %s", self.name, self._read_uuid)
                 break
+        
+        if not self._read_uuid:
+            LOGGER.warning("%s: Could not find any read characteristic from: %s", self.name, READ_CHARACTERISTIC_UUIDS)
+        
+        # Try to find write characteristic
         for characteristic in WRITE_CHARACTERISTIC_UUIDS:
             if char := services.get_characteristic(characteristic):
-                self._write_uuid = char
+                self._write_uuid = char.uuid
+                LOGGER.debug("%s: Found write UUID: %s", self.name, self._write_uuid)
                 break
-        return bool(self._read_uuid and self._write_uuid)
+        
+        if not self._write_uuid:
+            LOGGER.error("%s: Could not find any write characteristic from: %s", self.name, WRITE_CHARACTERISTIC_UUIDS)
+            return False
+        
+        # Write UUID is mandatory, read UUID is optional for some devices
+        return bool(self._write_uuid)
 
     def _reset_disconnect_timer(self) -> None:
         """Reset disconnect timer."""
