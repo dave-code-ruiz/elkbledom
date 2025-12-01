@@ -85,16 +85,25 @@ You can use gatttool to try discover your turn on/off command with:
 ```
 sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e00040100000000ef # POWERON
 sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004000000ff00ef # POWEROFF
+
+#ANOTHER TURN ON COMMANDS
+#7e0404f00001ff00ef
+#7e0004f00001ff00ef
+#7e00040100000000ef
+
+#ANOTHER TURN OFF COMMANDS
+#7e0404000000ff00ef
+#7e00040100000000ef
+#7e0004000000ff00ef
+
 ```
 
 or
 
 ```
-sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004f00001ff00ef # POWER ON
 sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e000503ff000000ef # RED
 sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0005030000ff00ef # BLUE
 sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e00050300ff0000ef # GREEN
-sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004000000ff00ef # POWER OFF
 ```
 
 ## Installation
