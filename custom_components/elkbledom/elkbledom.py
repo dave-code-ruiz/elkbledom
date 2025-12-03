@@ -334,11 +334,9 @@ class BLEDOMInstance:
         if value > self._max_color_temp_kelvin:
             value = self._max_color_temp_kelvin
         color_temp_percent = int(((value - self._min_color_temp_kelvin) * 100) / (self._max_color_temp_kelvin - self._min_color_temp_kelvin))
-        if brightness is None:
-            brightness = self._brightness
         # Ensure brightness is not None before using it
         if brightness is None:
-            brightness = 255  # Default brightness
+            brightness = self._brightness if self._brightness is not None else 255
         brightness_percent = int(brightness * 100 / 255) 
         await self._write([0x7e, 0x00, 0x05, 0x02, color_temp_percent, brightness_percent, 0x00, 0x00, 0xef])
 
@@ -486,11 +484,11 @@ class BLEDOMInstance:
 
             try:
                 if not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
-                    if self._read_uuid is not None:
+                    if self._read_uuid is not None and self._read_uuid != "None":
                         LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
                         await client.start_notify(self._read_uuid, self._notification_handler)
                     else:
-                        LOGGER.warning("%s: Read UUID not resolved, skipping notifications", self.name)
+                        LOGGER.warning("%s: Read UUID not resolved (value: %s), skipping notifications", self.name, self._read_uuid)
             except Exception as e:
                 LOGGER.error("Error during connection: %s", e)
 
