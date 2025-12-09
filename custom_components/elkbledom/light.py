@@ -110,8 +110,15 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             # Restore on/off state
             if last_state.state == "on":
                 self._instance._is_on = True
+                LOGGER.debug(f"Restored state: ON")
             elif last_state.state == "off":
                 self._instance._is_on = False
+                LOGGER.debug(f"Restored state: OFF")
+            elif last_state.state == "unavailable":
+                # If previous state was unavailable, assume device is off but available
+                # This prevents the entity from staying unavailable after restart
+                self._instance._is_on = False
+                LOGGER.debug(f"Previous state was unavailable, setting to OFF")
             
             # Restore brightness
             if ATTR_BRIGHTNESS in last_state.attributes:
@@ -140,7 +147,11 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 self._attr_effect = last_state.attributes[ATTR_EFFECT]
                 LOGGER.debug(f"Restored effect: {self._attr_effect}")
         else:
-            LOGGER.debug(f"No previous state found for {self.name}")
+            # No previous state found, set default values
+            LOGGER.debug(f"No previous state found for {self.name}, setting defaults")
+            self._instance._is_on = False
+            self._instance._brightness = 255
+            self._attr_color_mode = ColorMode.WHITE
 
     def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
         rgb = match_max_scale((255,), color)
