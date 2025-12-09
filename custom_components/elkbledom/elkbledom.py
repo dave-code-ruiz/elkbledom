@@ -470,11 +470,19 @@ class BLEDOMInstance:
                 return
 
             LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
+            
             resolved = self._resolve_characteristics(client.services)
             if not resolved:
                 # Try to handle services failing to load
-                LOGGER.warning("%s: Could not resolve characteristics from services; RSSI: %s", self.name, self.rssi)
-            self._cached_services = client.services if resolved else None
+                try:    
+                    resolved = self._resolve_characteristics(await client.get_services())
+                    self._cached_services = client.get_services() if resolved else None
+                except (AttributeError) as error:
+                    LOGGER.warning("%s: Could not resolve characteristics from services; RSSI: %s", self.name, self.rssi)
+            else:
+                self._cached_services = client.services if resolved else None
+
+            LOGGER.debug("%s: Characteristics resolved: %s; RSSI: %s", self.name, resolved, self.rssi)
 
             self._client = client
             self._reset_disconnect_timer()
@@ -532,8 +540,7 @@ class BLEDOMInstance:
     def _resolve_characteristics(self, services: BleakGATTServiceCollection) -> bool:
         """Resolve characteristics."""
         if not services:
-            LOGGER.error("%s: No services provided to resolve characteristics", self.name)
-            return False
+            LOGGER.debug("%s: No services provided to resolve characteristics, dont should works", self.name)
         
         # Log all available characteristics for debugging
         LOGGER.debug("%s: Available services and characteristics:", self.name)
@@ -545,7 +552,7 @@ class BLEDOMInstance:
         # Try to find read characteristic
         for characteristic in READ_CHARACTERISTIC_UUIDS:
             if char := services.get_characteristic(characteristic):
-                self._read_uuid = char.uuid
+                self._read_uuid = char
                 LOGGER.debug("%s: Found read UUID: %s", self.name, self._read_uuid)
                 break
         
@@ -555,16 +562,14 @@ class BLEDOMInstance:
         # Try to find write characteristic
         for characteristic in WRITE_CHARACTERISTIC_UUIDS:
             if char := services.get_characteristic(characteristic):
-                self._write_uuid = char.uuid
+                self._write_uuid = char
                 LOGGER.debug("%s: Found write UUID: %s", self.name, self._write_uuid)
                 break
         
         if not self._write_uuid:
             LOGGER.error("%s: Could not find any write characteristic from: %s", self.name, WRITE_CHARACTERISTIC_UUIDS)
-            return False
         
-        # Write UUID is mandatory, read UUID is optional for some devices
-        return bool(self._write_uuid)
+        return bool(self._read_uuid and self._write_uuid)
 
     def _reset_disconnect_timer(self) -> None:
         """Reset disconnect timer."""
