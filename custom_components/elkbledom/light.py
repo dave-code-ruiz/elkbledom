@@ -126,16 +126,22 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 LOGGER.debug(f"Restored brightness: {self._instance._brightness}")
             
             # Restore RGB color
-            if ATTR_RGB_COLOR in last_state.attributes:
-                self._instance._rgb_color = tuple(last_state.attributes[ATTR_RGB_COLOR])
-                self._attr_color_mode = ColorMode.RGB
-                LOGGER.debug(f"Restored RGB color: {self._instance._rgb_color}")
+            if ATTR_RGB_COLOR in last_state.attributes and last_state.attributes[ATTR_RGB_COLOR] is not None:
+                try:
+                    self._instance._rgb_color = tuple(last_state.attributes[ATTR_RGB_COLOR])
+                    self._attr_color_mode = ColorMode.RGB
+                    LOGGER.debug(f"Restored RGB color: {self._instance._rgb_color}")
+                except (TypeError, ValueError) as e:
+                    LOGGER.warning(f"Invalid RGB color data, skipping: {e}")
             
             # Restore color temperature
-            elif ATTR_COLOR_TEMP_KELVIN in last_state.attributes:
-                self._instance._color_temp_kelvin = last_state.attributes[ATTR_COLOR_TEMP_KELVIN]
-                self._attr_color_mode = ColorMode.COLOR_TEMP
-                LOGGER.debug(f"Restored color temp: {self._instance._color_temp_kelvin}K")
+            elif ATTR_COLOR_TEMP_KELVIN in last_state.attributes and last_state.attributes[ATTR_COLOR_TEMP_KELVIN] is not None:
+                try:
+                    self._instance._color_temp_kelvin = last_state.attributes[ATTR_COLOR_TEMP_KELVIN]
+                    self._attr_color_mode = ColorMode.COLOR_TEMP
+                    LOGGER.debug(f"Restored color temp: {self._instance._color_temp_kelvin}K")
+                except (TypeError, ValueError) as e:
+                    LOGGER.warning(f"Invalid color temperature data, skipping: {e}")
             
             # Restore white mode
             elif last_state.attributes.get("color_mode") == ColorMode.WHITE:
@@ -180,7 +186,7 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         if ATTR_WHITE in kwargs:
             self._attr_color_mode = ColorMode.WHITE
             self._attr_effect = None
-            await self._instance.set_color(self._transform_color_brightness((255, 255, 255), kwargs[ATTR_WHITE]))
+            await self._instance.set_white(kwargs[ATTR_WHITE])
 
         if ATTR_RGB_COLOR in kwargs:
             self._attr_color_mode = ColorMode.RGB

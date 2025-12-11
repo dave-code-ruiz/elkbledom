@@ -66,7 +66,7 @@ LOGGER = logging.getLogger(__name__)
 NAME_ARRAY = ["ELK-BLEDDM",
               "ELK-BLE",
               "LEDBLE",
-              "MELK-OG10"
+              "MELK-OG10",
               "MELK",
               "ELK-BULB2",
               "ELK-BULB",
@@ -103,6 +103,15 @@ TURN_OFF_CMD = [[0x7e, 0x04, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
                 [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef]]
+
+WHITE_CMD = [[0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x07, 0x05, 0x01, 0xbb, 0xff, 0x02, 0x01],
+                [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef]]
 
 MIN_COLOR_TEMPS_K = [2700,2700,2700,2700,2700,2700,2700,2700]
 MAX_COLOR_TEMPS_K = [6500,6500,6500,6500,6500,6500,6500,6500]
@@ -230,6 +239,7 @@ class BLEDOMInstance:
         self._read_uuid = None
         self._turn_on_cmd = None
         self._turn_off_cmd = None
+        self._white_cmd = None
         self._max_color_temp_kelvin = None
         self._min_color_temp_kelvin = None
         self._model = None
@@ -252,7 +262,7 @@ class BLEDOMInstance:
             
         # self._adv_data: AdvertisementData | None = None
         self._detect_model()
-        LOGGER.debug('Model information for device %s : ModelNo %s, Turn on cmd %s, Turn off cmd %s, rssi %s', self._device.name, self._model, self._turn_on_cmd, self._turn_off_cmd, self.rssi)
+        LOGGER.debug('Model information for device %s : ModelNo %s, Turn on cmd %s, Turn off cmd %s, White cmd %s, rssi %s', self._device.name, self._model, self._turn_on_cmd, self._turn_off_cmd, self._white_cmd, self.rssi)
         
     def _detect_model(self):
         x = 0
@@ -260,6 +270,7 @@ class BLEDOMInstance:
             if self._device.name.lower().startswith(name.lower()):
                 self._turn_on_cmd = TURN_ON_CMD[x]
                 self._turn_off_cmd = TURN_OFF_CMD[x]
+                self._white_cmd = WHITE_CMD[x]
                 self._max_color_temp_kelvin = MAX_COLOR_TEMPS_K[x]
                 self._min_color_temp_kelvin = MIN_COLOR_TEMPS_K[x]
                 self._model = name
@@ -351,10 +362,13 @@ class BLEDOMInstance:
         await self._write([0x7e, 0x00, 0x05, 0x03, int(r), int(g), int(b), 0x00, 0xef])
         self._rgb_color = rgb
 
-    @DeprecationWarning
     @retry_bluetooth_connection_error
     async def set_white(self, intensity: int):
-        await self._write([0x7e, 0x00, 0x01, int(intensity*100/255), 0x00, 0x00, 0x00, 0x00, 0xef])
+        white_cmd = self._white_cmd
+        for v in white_cmd:
+            if v == 0xbb:
+                white_cmd[white_cmd.index(v)] = int(intensity*100/255)
+        await self._write(white_cmd)
         self._brightness = intensity
 
     @retry_bluetooth_connection_error
