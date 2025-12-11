@@ -585,6 +585,13 @@ class BLEDOMInstance:
             if char := services.get_characteristic(characteristic):
                 self._write_uuid = char.uuid
                 LOGGER.debug("%s: Found write UUID: %s with handle %s", self.name, self._write_uuid, char.handle if hasattr(char, 'handle') else 'Unknown')
+                if self.name == "ELK-BLEDOM" and char.handle if hasattr(char, 'handle') else 'Unknown' == 0x000d:
+                    LOGGER.debug("%s: Adjusting model for ELK-BLEDOM specific handle issue", self.name)
+                    self._turn_on_cmd = TURN_ON_CMD[0]
+                    self._turn_off_cmd = TURN_OFF_CMD[0]
+                    self._white_cmd = WHITE_CMD[0]
+                    self._max_color_temp_kelvin = MAX_COLOR_TEMPS_K[0]
+                    self._min_color_temp_kelvin = MIN_COLOR_TEMPS_K[0]
                 break
         
         if not self._write_uuid:
