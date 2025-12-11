@@ -573,8 +573,8 @@ class BLEDOMInstance:
         # Try to find read characteristic
         for characteristic in READ_CHARACTERISTIC_UUIDS:
             if char := services.get_characteristic(characteristic):
-                self._read_uuid = char
-                LOGGER.debug("%s: Found read UUID: %s", self.name, self._read_uuid)
+                self._read_uuid = char.uuid
+                LOGGER.debug("%s: Found read UUID: %s with handle %s", self.name, self._read_uuid, char.handle if hasattr(char, 'handle') else 'Unknown')
                 break
         
         if not self._read_uuid:
@@ -583,8 +583,8 @@ class BLEDOMInstance:
         # Try to find write characteristic
         for characteristic in WRITE_CHARACTERISTIC_UUIDS:
             if char := services.get_characteristic(characteristic):
-                self._write_uuid = char
-                LOGGER.debug("%s: Found write UUID: %s", self.name, self._write_uuid)
+                self._write_uuid = char.uuid
+                LOGGER.debug("%s: Found write UUID: %s with handle %s", self.name, self._write_uuid, char.handle if hasattr(char, 'handle') else 'Unknown')
                 break
         
         if not self._write_uuid:
