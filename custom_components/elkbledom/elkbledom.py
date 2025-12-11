@@ -364,6 +364,8 @@ class BLEDOMInstance:
 
     @retry_bluetooth_connection_error
     async def set_white(self, intensity: int):
+        if intensity is None:
+            intensity = 255  # Valor por defecto si no se especifica
         white_cmd = self._white_cmd
         for v in white_cmd:
             if v == 0xbb:
