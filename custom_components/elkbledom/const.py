@@ -5,6 +5,7 @@ CONF_RESET = "reset"
 CONF_DELAY = "delay"
 
 class EFFECTS (Enum):
+    # Light Effects (0x87-0x9C)
     jump_red_green_blue = 0x87
     jump_red_green_blue_yellow_cyan_magenta_white = 0x88
     crossfade_red = 0x8b
@@ -28,6 +29,17 @@ class EFFECTS (Enum):
     blink_white = 0x9c
     blink_red_green_blue_yellow_cyan_magenta_white = 0x95
 
+class MIC_EFFECTS (Enum):
+    # Microphone Effects (0x80-0x87)
+    mic_energic = 0x80
+    mic_rhythm = 0x81
+    mic_spectrum = 0x82
+    mic_rolling = 0x83
+    mic_effect_4 = 0x84
+    mic_effect_5 = 0x85
+    mic_effect_6 = 0x86
+    mic_effect_7 = 0x87
+
 EFFECTS_list = ['jump_red_green_blue',
     'jump_red_green_blue_yellow_cyan_magenta_white',
     'crossfade_red',
@@ -50,6 +62,17 @@ EFFECTS_list = ['jump_red_green_blue',
     'blink_magenta',
     'blink_white',
     'blink_red_green_blue_yellow_cyan_magenta_white'
+    ]
+
+MIC_EFFECTS_list = [
+    'mic_energic',
+    'mic_rhythm',
+    'mic_spectrum',
+    'mic_rolling',
+    'mic_effect_4',
+    'mic_effect_5',
+    'mic_effect_6',
+    'mic_effect_7'
     ]
 
 class WEEK_DAYS (Enum):

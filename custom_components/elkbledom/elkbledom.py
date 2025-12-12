@@ -98,6 +98,16 @@ EFFECT_CMD = [[0x7e, 0x00, 0x03, 0xbb, 0x03, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x03, 0xbb, 0x03, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x03, 0xbb, 0x03, 0x00, 0x00, 0x00, 0xef]]
 
+COLOR_TEMP_CMD = [[0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef],
+                [0x7e, 0x06, 0x05, 0x02, 0xbb, 0xbb, 0xff, 0x08, 0xef],
+                [0x7e, 0x06, 0x05, 0x02, 0xbb, 0xbb, 0xff, 0x08, 0xef],
+                [0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef]]
+
+
 MIN_COLOR_TEMPS_K = [2700,2700,2700,2700,2700,2700,2700,2700]
 MAX_COLOR_TEMPS_K = [6500,6500,6500,6500,6500,6500,6500,6500]
 
@@ -207,12 +217,18 @@ class BLEDOMInstance:
         self._effect = None
         self._effect_speed = None
         self._color_temp_kelvin = None
+        self._mic_effect = None
+        self._mic_sensitivity = 50
+        self._mic_enabled = False
         self._write_uuid = None
         self._read_uuid = None
         self._turn_on_cmd = None
         self._turn_off_cmd = None
         self._white_cmd = None
         self._effect_speed_cmd = None
+        self._effect_cmd = None
+        self._color_temp_cmd = None
+        self._color_temp = None
         self._max_color_temp_kelvin = None
         self._min_color_temp_kelvin = None
         self._model = None
@@ -243,6 +259,9 @@ class BLEDOMInstance:
                 self._turn_on_cmd = TURN_ON_CMD[x]
                 self._turn_off_cmd = TURN_OFF_CMD[x]
                 self._white_cmd = WHITE_CMD[x]
+                self._effect_speed_cmd = EFFECT_SPEED_CMD[x]
+                self._effect_cmd = EFFECT_CMD[x]
+                self._color_temp_cmd = COLOR_TEMP_CMD[x]
                 self._max_color_temp_kelvin = MAX_COLOR_TEMPS_K[x]
                 self._min_color_temp_kelvin = MIN_COLOR_TEMPS_K[x]
                 self._model = name
@@ -269,6 +288,15 @@ class BLEDOMInstance:
             if v == 0xbb:
                 effect_cmd[effect_cmd.index(v)] = int(value)
         return effect_cmd
+
+    def get_color_temp_cmd(self, warm: int, cold: int):
+        color_temp_cmd = self._color_temp_cmd
+        for v in color_temp_cmd:
+            if v == 0xbb:
+                color_temp_cmd[color_temp_cmd.index(v)] = int(warm)
+                color_temp_cmd[color_temp_cmd.index(v, color_temp_cmd.index(v)+1)] = int(cold)
+        return color_temp_cmd
+            
 
     async def _write(self, data: bytearray):
         """Send command to device and read response."""
@@ -324,13 +352,26 @@ class BLEDOMInstance:
     def effect(self):
         return self._effect
     
+    @property
+    def mic_effect(self):
+        return self._mic_effect
+    
+    @property
+    def mic_sensitivity(self):
+        return self._mic_sensitivity
+    
+    @property
+    def mic_enabled(self):
+        return self._mic_enabled
+    
     @retry_bluetooth_connection_error
     async def set_color_temp(self, value: int):
         if value > 100:
             value = 100
         warm = value
         cold = 100 - value
-        await self._write([0x7e, 0x00, 0x05, 0x02, warm, cold, 0x00, 0x00, 0xef])
+        color_temp_cmd = self.get_color_temp_cmd(warm, cold)
+        await self._write(color_temp_cmd)
         self._color_temp = warm
 
     @retry_bluetooth_connection_error
@@ -347,7 +388,8 @@ class BLEDOMInstance:
         if brightness is None:
             brightness = self._brightness if self._brightness is not None else 255
         brightness_percent = int(brightness * 100 / 255) 
-        await self._write([0x7e, 0x00, 0x05, 0x02, color_temp_percent, brightness_percent, 0x00, 0x00, 0xef])
+        color_temp_cmd = self.get_color_temp_cmd(color_temp_percent, brightness_percent)
+        await self._write(color_temp_cmd)
 
     @retry_bluetooth_connection_error
     async def set_color(self, rgb: Tuple[int, int, int]):
@@ -379,6 +421,40 @@ class BLEDOMInstance:
         effect = self.get_effect_cmd(value)
         await self._write(effect)
         self._effect = value
+
+    @retry_bluetooth_connection_error
+    async def set_mic_effect(self, value: int):
+        """Set microphone effect (0x80-0x87)."""
+        if not 0x80 <= value <= 0x87:
+            LOGGER.warning("Invalid mic effect value: 0x%02x, must be between 0x80 and 0x87", value)
+            return
+        await self._write([0x7e, 0x05, 0x03, value, 0x04, 0xff, 0xff, 0x00, 0xef])
+        self._mic_effect = value
+        LOGGER.debug("Mic effect set to: 0x%02x", value)
+
+    @retry_bluetooth_connection_error
+    async def set_mic_sensitivity(self, value: int):
+        """Set microphone sensitivity (0-100)."""
+        if not 0 <= value <= 100:
+            LOGGER.warning("Invalid mic sensitivity value: %d, must be between 0 and 100", value)
+            return
+        await self._write([0x7e, 0x04, 0x06, value, 0xff, 0xff, 0xff, 0x00, 0xef])
+        self._mic_sensitivity = value
+        LOGGER.debug("Mic sensitivity set to: %d", value)
+
+    @retry_bluetooth_connection_error
+    async def enable_mic(self):
+        """Enable external microphone."""
+        await self._write([0x7e, 0x04, 0x07, 0x01, 0xff, 0xff, 0xff, 0x00, 0xef])
+        self._mic_enabled = True
+        LOGGER.debug("External microphone enabled")
+
+    @retry_bluetooth_connection_error
+    async def disable_mic(self):
+        """Disable external microphone."""
+        await self._write([0x7e, 0x04, 0x07, 0x00, 0xff, 0xff, 0xff, 0x00, 0xef])
+        self._mic_enabled = False
+        LOGGER.debug("External microphone disabled")
 
     @retry_bluetooth_connection_error
     async def turn_on(self):
@@ -580,6 +656,9 @@ class BLEDOMInstance:
                     self._turn_on_cmd = TURN_ON_CMD[0]
                     self._turn_off_cmd = TURN_OFF_CMD[0]
                     self._white_cmd = WHITE_CMD[0]
+                    self._effect_speed_cmd = EFFECT_SPEED_CMD[0]
+                    self._effect_cmd = EFFECT_CMD[0]
+                    self._color_temp_cmd = COLOR_TEMP_CMD[0]
                     self._max_color_temp_kelvin = MAX_COLOR_TEMPS_K[0]
                     self._min_color_temp_kelvin = MIN_COLOR_TEMPS_K[0]
                 break
