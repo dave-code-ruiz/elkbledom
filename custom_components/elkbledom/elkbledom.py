@@ -13,8 +13,6 @@ from bleak_retry_connector import (
 )
 from homeassistant.components.bluetooth import async_discovered_service_info, async_ble_device_from_address
 from home_assistant_bluetooth import BluetoothServiceInfo
-#throw error, see issue #43
-#from bluetooth_sensor_state_data import BluetoothData
 from typing import Any, TypeVar, cast, Tuple
 from collections.abc import Callable
 import traceback
@@ -23,46 +21,15 @@ import logging
 
 LOGGER = logging.getLogger(__name__)
 
-#handle: 0x0002, char properties: 0x12, char value handle: 0x0003, uuid: 00002a00-0000-1000-8000-00805f9b34fb
-#handle: 0x0005, char properties: 0x10, char value handle: 0x0006, uuid: 0000fff4-0000-1000-8000-00805f9b34fb
-#handle: 0x0008, char properties: 0x06, char value handle: 0x0009, uuid: 0000fff3-0000-1000-8000-00805f9b34fb
-#OTHER LED STRIP ??
-#handle: 0x0008, char properties: 0x06, char value handle: 0x0009, uuid: 0000fff0-0000-1000-8000-00805f9b34fb
-
 #gatttool -i hci0 -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e00040100000000ef POWERON
-#gatttool -i hci0 -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004000000ff00ef POWEROFF
-
 # sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004f00001ff00ef # POWER ON
 # sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e000503ff000000ef # RED
 # sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0005030000ff00ef # BLUE
 # sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e00050300ff0000ef # GREEN
 # sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004000000ff00ef # POWER OFF
 
-#https://github.com/TheSylex/ELK-BLEDOM-bluetooth-led-strip-controller/
-#https://github.com/FreekBes/bledom_controller/
-#https://github.com/sysofwan/ha-triones
-#https://github.com/FergusInLondon/ELK-BLEDOM/
-#https://linuxthings.co.uk/blog/control-an-elk-bledom-bluetooth-led-strip
-#https://github.com/arduino12/ble_rgb_led_strip_controller
-#https://github.com/lilgallon/DynamicLedStrips
-#https://github.com/kquinsland/JACKYLED-BLE-RGB-LED-Strip-controller
 
-
-# pi@homeassistant:~/magic $ gatttool -I
-# Attempting to connect to be:59:7a:00:08:d5
-# Connection successful
-# [be:59:7a:00:08:d5][LE]> char-read-uuid 0000fff3-0000-1000-8000-00805f9b34fb
-# handle: 0x0009   value: 7e 08 82 00 00 00 01 00 ef 2e 39 52 33 36 30 32
-# handle: 0x0009   value: 20 53 48 59 2d 56 38 2e 37 2e 39 52 33 36 30 32
-# handle: 0x0009   value: 50 33 30 56 33 32 5f 53 48 59 5f 52 31 34 35 33 - MELK
-
-# [be:59:7a:00:08:d5][LE]> char-read-uuid 0000fff4-0000-1000-8000-00805f9b34fb
-# handle: 0x0006   value: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-# [be:59:7a:00:08:d5][LE]> char-read-uuid 00002a00-0000-1000-8000-00805f9b34fb
-# handle: 0x0003   value: 45 4c 4b 2d 42 4c 45 44 4f 4d 20 20 20 -> NAME ELK-BLEDOM
-# [be:59:7a:00:08:d5][LE]>
-
-# CHANGES ARRAYS TO DICT OR MODELDB OBJECT WITH ALL MODEL INFORMATION
+#TODO CHANGES ARRAYS TO DICT OR MODELDB OBJECT WITH ALL MODEL INFORMATION
 NAME_ARRAY = ["ELK-BLEDDM",
               "ELK-BLE",
               "LEDBLE",
@@ -113,6 +80,24 @@ WHITE_CMD = [[0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef]]
 
+EFFECT_SPEED_CMD = [[0x7e, 0x00, 0x02, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x02, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x02, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x04, 0x02, 0xbb, 0xff, 0xff, 0xff, 0x00, 0xef],
+                [0x7e, 0x04, 0x02, 0xbb, 0xff, 0xff, 0xff, 0x00, 0xef],
+                [0x7e, 0x00, 0x02, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x02, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x02, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef]]
+
+EFFECT_CMD = [[0x7e, 0x00, 0x03, 0xbb, 0x03, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x03, 0xbb, 0x03, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x03, 0xbb, 0x03, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x05, 0x03, 0xbb, 0x06, 0xff, 0xff, 0x00, 0xef],
+                [0x7e, 0x05, 0x03, 0xbb, 0x06, 0xff, 0xff, 0x00, 0xef],
+                [0x7e, 0x00, 0x03, 0xbb, 0x03, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x03, 0xbb, 0x03, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x00, 0x03, 0xbb, 0x03, 0x00, 0x00, 0x00, 0xef]]
+
 MIN_COLOR_TEMPS_K = [2700,2700,2700,2700,2700,2700,2700,2700]
 MAX_COLOR_TEMPS_K = [6500,6500,6500,6500,6500,6500,6500,6500]
 
@@ -157,7 +142,6 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
 
     return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
 
-#class DeviceData(BluetoothData):
 class DeviceData():
     def __init__(self, hass, discovery_info):
         self._discovery = discovery_info
@@ -167,17 +151,6 @@ class DeviceData():
         self._rssi = self._discovery.rssi
         self._hass = hass
         self._bledevice = async_ble_device_from_address(hass, self._address)
-        # try:
-        #     discovered_devices_and_advertisement_data = await BleakScanner.discover(return_adv=True)
-        #     for device, adv_data in discovered_devices_and_advertisement_data.values():
-        #         if device.address == address:
-        #             self._bledevice = device
-        #             self._adv_data = adv_data
-        # except (Exception) as error:
-        #     LOGGER.warning("Warning getting device: %s", error)
-        #     self._bledevice = bluetooth.async_ble_device_from_address(self._hass, address)
-        # if not self._bledevice:
-        #     raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
         
     @property
     def is_supported(self) -> bool:
@@ -206,7 +179,6 @@ class DeviceData():
         #TODO for discovery_info in async_last_service_info(self._hass, self._address):
         for discovery_info in async_discovered_service_info(self._hass):
             if discovery_info.address == self._address:
-                #devicedata = DeviceData(self._hass, discovery_info)
                 self._rssi = discovery_info.rssi
                 ##TODO SOMETHING WITH DEVICE discovery_info
         return
@@ -240,12 +212,12 @@ class BLEDOMInstance:
         self._turn_on_cmd = None
         self._turn_off_cmd = None
         self._white_cmd = None
+        self._effect_speed_cmd = None
         self._max_color_temp_kelvin = None
         self._min_color_temp_kelvin = None
         self._model = None
 
         try:
-            #self._device = self._device_data.bledevice()
             self._device = async_ble_device_from_address(hass, self._address)
         except (Exception) as error:
             LOGGER.error("Error getting device: %s", error)
@@ -276,6 +248,27 @@ class BLEDOMInstance:
                 self._model = name
                 return x
             x = x + 1
+    
+    def get_white_cmd(self, intensity: int):
+        white_cmd = self._white_cmd
+        for v in white_cmd:
+            if v == 0xbb:
+                white_cmd[white_cmd.index(v)] = int(intensity*100/255)
+        return white_cmd
+    
+    def get_effect_speed_cmd(self, value: int):
+        effect_speed_cmd = self._effect_speed_cmd
+        for v in effect_speed_cmd:
+            if v == 0xbb:
+                effect_speed_cmd[effect_speed_cmd.index(v)] = int(value)
+        return effect_speed_cmd
+    
+    def get_effect_cmd(self, value: int):
+        effect_cmd = self._effect_cmd
+        for v in effect_cmd:
+            if v == 0xbb:
+                effect_cmd[effect_cmd.index(v)] = int(value)
+        return effect_cmd
 
     async def _write(self, data: bytearray):
         """Send command to device and read response."""
@@ -366,10 +359,7 @@ class BLEDOMInstance:
     async def set_white(self, intensity: int):
         if intensity is None:
             intensity = 255  # Valor por defecto si no se especifica
-        white_cmd = self._white_cmd
-        for v in white_cmd:
-            if v == 0xbb:
-                white_cmd[white_cmd.index(v)] = int(intensity*100/255)
+        white_cmd = self.get_white_cmd(intensity)
         await self._write(white_cmd)
         self._brightness = intensity
 
@@ -380,18 +370,18 @@ class BLEDOMInstance:
 
     @retry_bluetooth_connection_error
     async def set_effect_speed(self, value: int):
-        await self._write([0x7e, 0x00, 0x02, value, 0x00, 0x00, 0x00, 0x00, 0xef])
+        effect_speed = self.get_effect_speed_cmd(value)
+        await self._write(effect_speed)
         self._effect_speed = value
 
     @retry_bluetooth_connection_error
     async def set_effect(self, value: int):
-        await self._write([0x7e, 0x00, 0x03, value, 0x03, 0x00, 0x00, 0x00, 0xef])
+        effect = self.get_effect_cmd(value)
+        await self._write(effect)
         self._effect = value
 
     @retry_bluetooth_connection_error
     async def turn_on(self):
-        #NOT NEEDED, self._write() call to self._ensure_connected()
-        #await self._ensure_connected()
         await self._write(self._turn_on_cmd)
         self._is_on = True
 
