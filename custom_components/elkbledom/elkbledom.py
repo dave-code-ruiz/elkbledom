@@ -269,35 +269,35 @@ class BLEDOMInstance:
             x = x + 1
     
     def get_white_cmd(self, intensity: int):
-        white_cmd = self._white_cmd
-        for v in white_cmd:
-            if v == 0xbb:
-                white_cmd[white_cmd.index(v)] = int(intensity*100/255)
+        white_cmd = self._white_cmd.copy()
+        bb_index = white_cmd.index(0xbb) if 0xbb in white_cmd else -1
+        if bb_index >= 0:
+            white_cmd[bb_index] = int(intensity*100/255)
         return white_cmd
     
     def get_effect_speed_cmd(self, value: int):
-        effect_speed_cmd = self._effect_speed_cmd
-        for v in effect_speed_cmd:
-            if v == 0xbb:
-                effect_speed_cmd[effect_speed_cmd.index(v)] = int(value)
+        effect_speed_cmd = self._effect_speed_cmd.copy()
+        bb_index = effect_speed_cmd.index(0xbb) if 0xbb in effect_speed_cmd else -1
+        if bb_index >= 0:
+            effect_speed_cmd[bb_index] = int(value)
         return effect_speed_cmd
     
     def get_effect_cmd(self, value: int):
-        effect_cmd = self._effect_cmd
-        for v in effect_cmd:
-            if v == 0xbb:
-                effect_cmd[effect_cmd.index(v)] = int(value)
+        effect_cmd = self._effect_cmd.copy()
+        bb_index = effect_cmd.index(0xbb) if 0xbb in effect_cmd else -1
+        if bb_index >= 0:
+            effect_cmd[bb_index] = int(value)
         return effect_cmd
 
     def get_color_temp_cmd(self, warm: int, cold: int):
-        color_temp_cmd = self._color_temp_cmd
-        for v in color_temp_cmd:
-            if v == 0xbb:
-                color_temp_cmd[color_temp_cmd.index(v)] = int(warm)
-                color_temp_cmd[color_temp_cmd.index(v, color_temp_cmd.index(v)+1)] = int(cold)
+        color_temp_cmd = self._color_temp_cmd.copy()
+        # Find all 0xbb positions
+        bb_indices = [i for i, v in enumerate(color_temp_cmd) if v == 0xbb]
+        if len(bb_indices) >= 2:
+            color_temp_cmd[bb_indices[0]] = int(warm)
+            color_temp_cmd[bb_indices[1]] = int(cold)
         return color_temp_cmd
             
-
     async def _write(self, data: bytearray):
         """Send command to device and read response."""
         await self._ensure_connected()
