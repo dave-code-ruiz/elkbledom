@@ -56,6 +56,9 @@ class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
 
     @property
     def native_value(self) -> int | None:
+        # Sync with instance value
+        if self._instance.effect_speed is not None:
+            return self._instance.effect_speed
         return self._effect_speed
 
     @property
@@ -82,7 +85,9 @@ class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
         await self._instance.set_effect_speed(int(value))
-        self._effect_speed = value
+        self._effect_speed = int(value)
+        # Trigger update on light entity to reflect new effect_speed attribute
+        self.hass.states.async_update(f"light.{self._instance.address}")
 
     async def async_added_to_hass(self) -> None:
         """Restore previous state when entity is added to hass."""

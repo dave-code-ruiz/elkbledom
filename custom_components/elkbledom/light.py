@@ -77,6 +77,18 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         return EFFECTS_list
 
     @property
+    def effect(self):
+        """Return current effect."""
+        return self._attr_effect
+
+    @property
+    def extra_state_attributes(self):
+        """Return entity specific state attributes."""
+        return {
+            "effect_speed": self._instance.effect_speed,
+        }
+
+    @property
     def rgb_color(self):
         if self._instance.rgb_color:
             return match_max_scale((255,), self._instance.rgb_color)
@@ -151,7 +163,17 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             # Restore effect
             if ATTR_EFFECT in last_state.attributes:
                 self._attr_effect = last_state.attributes[ATTR_EFFECT]
+                if self._attr_effect in EFFECTS:
+                    self._instance._effect = EFFECTS[self._attr_effect].value
                 LOGGER.debug(f"Restored effect: {self._attr_effect}")
+            
+            # Restore effect speed from extra attributes
+            if "effect_speed" in last_state.attributes:
+                try:
+                    self._instance._effect_speed = int(last_state.attributes["effect_speed"])
+                    LOGGER.debug(f"Restored effect speed: {self._instance._effect_speed}")
+                except (TypeError, ValueError) as e:
+                    LOGGER.warning(f"Invalid effect speed data, using default: {e}")
         else:
             # No previous state found, set default values
             LOGGER.debug(f"No previous state found for {self.name}, setting defaults")
@@ -197,7 +219,11 @@ class BLEDOMLight(RestoreEntity, LightEntity):
 
         if ATTR_EFFECT in kwargs and kwargs[ATTR_EFFECT] != self.effect:
             self._attr_effect = kwargs[ATTR_EFFECT]
-            await self._instance.set_effect(EFFECTS[kwargs[ATTR_EFFECT]].value)
+            effect_value = EFFECTS[kwargs[ATTR_EFFECT]].value
+            await self._instance.set_effect(effect_value)
+            # Also send effect speed to ensure it's applied
+            if self._instance.effect_speed is not None:
+                await self._instance.set_effect_speed(self._instance.effect_speed)
 
         self.async_write_ha_state()
 

@@ -152,6 +152,8 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
 
     return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
 
+class CharacteristicMissingError(Exception):
+    """Raised when a characteristic is missing."""
 class DeviceData():
     def __init__(self, hass, discovery_info):
         self._discovery = discovery_info
@@ -215,7 +217,7 @@ class BLEDOMInstance:
         self._rgb_color = None
         self._brightness = 255
         self._effect = None
-        self._effect_speed = None
+        self._effect_speed = 128  # Default medium speed (0-255 range)
         self._color_temp_kelvin = None
         self._mic_effect = None
         self._mic_sensitivity = 50
@@ -351,6 +353,10 @@ class BLEDOMInstance:
     @property
     def effect(self):
         return self._effect
+    
+    @property
+    def effect_speed(self):
+        return self._effect_speed
     
     @property
     def mic_effect(self):
@@ -568,6 +574,13 @@ class BLEDOMInstance:
                     LOGGER.warning("%s: Could not resolve characteristics from services; RSSI: %s", self.name, self.rssi)
             else:
                 self._cached_services = client.services if resolved else None
+            
+            if not resolved:
+                await client.clear_cache()
+                await client.disconnect()
+                raise CharacteristicMissingError(
+                    "Failed to find supported characteristics, device may not be supported"
+                )
 
             LOGGER.debug("%s: Characteristics resolved: %s; RSSI: %s", self.name, resolved, self.rssi)
 
