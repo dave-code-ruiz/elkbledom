@@ -86,8 +86,7 @@ class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
         """Update the current value."""
         await self._instance.set_effect_speed(int(value))
         self._effect_speed = int(value)
-        # Trigger update on light entity to reflect new effect_speed attribute
-        self.hass.states.async_update(f"light.{self._instance.address}")
+        self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Restore previous state when entity is added to hass."""
