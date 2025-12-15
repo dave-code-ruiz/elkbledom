@@ -18,6 +18,8 @@ from collections.abc import Callable
 import traceback
 import asyncio
 import logging
+import json
+from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -110,6 +112,84 @@ COLOR_TEMP_CMD = [[0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef],
 
 MIN_COLOR_TEMPS_K = [2700,2700,2700,2700,2700,2700,2700,2700]
 MAX_COLOR_TEMPS_K = [6500,6500,6500,6500,6500,6500,6500,6500]
+
+# Query/Status commands to try for different LED strip models
+# Format: [command_bytes, description]
+QUERY_COMMANDS = [
+    # Standard ELK-BLEDOM commands
+    ([0x7e, 0x00, 0x01, 0xfa, 0x00, 0x00, 0x00, 0x00, 0xef], "Standard status query"),
+    ([0x7e, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Alternative query v1"),
+    ([0x7e, 0x00, 0x81, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Status query 0x81"),
+    ([0x7e, 0x00, 0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Status query 0x82"),
+    ([0x7e, 0x00, 0x83, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Status query 0x83"),
+    
+    # Short format commands
+    ([0xef, 0x01, 0x77], "Short query v1"),
+    ([0x7e, 0x00, 0x10], "Short query v2"),
+    ([0x7e, 0x10], "Minimal query"),
+    ([0x25, 0x00], "Minimal query 2"),
+    ([0x25, 0x02], "Minimal query 3"),
+    
+    # MELK specific commands
+    ([0x7e, 0x04, 0x01, 0x00, 0xff, 0x00, 0xff, 0x00, 0xef], "MELK status query"),
+    ([0x7e, 0x07, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0xef], "MELK query v2"),
+    
+    # Alternative long format
+    ([0x7e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Get all status"),
+    ([0x7e, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Status cmd 0x01"),
+    ([0x7e, 0x04, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], "Power status query"),
+    
+    # LEDBLE specific
+    ([0x7e, 0x00, 0x04, 0xfa, 0x00, 0x00, 0x00, 0x00, 0xef], "LEDBLE status"),
+    ([0xcc, 0x23, 0x33], "LEDBLE short status"),
+    
+    # Other variants found in wild
+    ([0xaa, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55], "Variant header 0xaa"),
+    ([0x7e, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x05"),
+   
+    # ========== 30 COMANDOS ADICIONALES ==========
+    
+    # Variantes 0x7e con diferentes bytes de comando (0x02-0x0f)
+    ([0x7e, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x02"),
+    ([0x7e, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x03"),
+    ([0x7e, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x06"),
+    ([0x7e, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x07"),
+    ([0x7e, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x08"),
+    ([0x7e, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x09"),
+    ([0x7e, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x0a"),
+    ([0x7e, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x0b"),
+    ([0x7e, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x0c"),
+    ([0x7e, 0x00, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x0d"),
+    
+    # Comandos con segundo byte variable (prefijo alternativo)
+    ([0x7e, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x01"),
+    ([0x7e, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x02"),
+    ([0x7e, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x03"),
+    ([0x7e, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x05"),
+    ([0x7e, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x06"),
+    ([0x7e, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x08"),
+    ([0x7e, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x09"),
+    
+    # Comandos cortos con diferentes protocolos
+    ([0xef, 0x01], "Minimal EF query"),
+    ([0xef, 0x77], "EF query 0x77"),
+    ([0xef, 0x00], "EF query 0x00"),
+    ([0x10, 0x00], "Query 0x10 0x00"),
+    ([0x10, 0x01], "Query 0x10 0x01"),
+    ([0xaa, 0x00], "AA protocol query"),
+    ([0xbb, 0x00, 0x00], "BB protocol query"),
+    
+    # Comandos tipo checksum/CRC diferentes
+    ([0x7e, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff], "Query end 0xff"),
+    ([0x7e, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfe], "Query end 0xfe"),
+    ([0x7e, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xee], "Query end 0xee"),
+    
+    # Comandos tipo "ping" o "hello"
+    ([0xff, 0x00, 0x00], "Ping command"),
+    ([0x00, 0x00, 0x00], "Null query"),
+    ([0x01], "Single byte query"),
+    ([0xff], "Single 0xFF query"),
+]
 
 DEFAULT_ATTEMPTS = 3
 #DISCONNECT_DELAY = 120
@@ -234,6 +314,9 @@ class BLEDOMInstance:
         self._max_color_temp_kelvin = None
         self._min_color_temp_kelvin = None
         self._model = None
+        self._working_query_cmd = None  # Command that works for this device
+        self._query_detection_done = False  # Flag to avoid retesting
+        self._notification_received = False  # Flag to detect responses
 
         try:
             self._device = async_ble_device_from_address(hass, self._address)
@@ -498,10 +581,124 @@ class BLEDOMInstance:
     async def custom_time(self, hour: int, minute: int, second: int, day_of_week: int):
         await self._write([0x7e, 0x00, 0x83, hour, minute, second, day_of_week, 0x00, 0xef])
 
+    def _get_query_cache_file(self) -> Path:
+        """Get path to query command cache file."""
+        # Store in Home Assistant config directory
+        config_dir = Path(self._hass.config.path())
+        cache_dir = config_dir / "custom_components" / "elkbledom" / ".cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir / "query_commands.json"
+    
+    def _load_working_query_cmd(self) -> bool:
+        """Load previously detected working query command."""
+        try:
+            cache_file = self._get_query_cache_file()
+            if cache_file.exists():
+                with open(cache_file, 'r') as f:
+                    cache = json.load(f)
+                    device_key = f"{self.name}_{self._model}"
+                    if device_key in cache:
+                        self._working_query_cmd = cache[device_key]["command"]
+                        cmd_desc = cache[device_key]["description"]
+                        LOGGER.info("%s: Loaded cached query command: %s", self.name, cmd_desc)
+                        return True
+        except Exception as e:
+            LOGGER.debug("%s: Could not load query cache: %s", self.name, e)
+        return False
+    
+    def _save_working_query_cmd(self, cmd: list, description: str) -> None:
+        """Save working query command to cache."""
+        try:
+            cache_file = self._get_query_cache_file()
+            cache = {}
+            if cache_file.exists():
+                with open(cache_file, 'r') as f:
+                    cache = json.load(f)
+            
+            device_key = f"{self.name}_{self._model}"
+            cache[device_key] = {
+                "command": cmd,
+                "description": description,
+                "device_name": self.name,
+                "model": self._model
+            }
+            
+            with open(cache_file, 'w') as f:
+                json.dump(cache, f, indent=2)
+            
+            LOGGER.info("%s: Saved working query command: %s", self.name, description)
+        except Exception as e:
+            LOGGER.warning("%s: Could not save query cache: %s", self.name, e)
+    
+    async def query_state(self):
+        """Query device state by testing multiple commands and saving the one that works."""
+        if not self._client or not self._client.is_connected:
+            return
+        
+        # If we already know the working command, use it
+        if self._working_query_cmd:
+            try:
+                LOGGER.debug("%s: Using known working query command", self.name)
+                await self._write_while_connected(self._working_query_cmd)
+                await asyncio.sleep(0.2)
+                return
+            except Exception as e:
+                LOGGER.debug("%s: Error with saved query: %s", self.name, e)
+                return
+        
+        # Detection already attempted
+        if self._query_detection_done:
+            return
+        
+        # Try to load from cache first
+        if self._load_working_query_cmd():
+            self._query_detection_done = True
+            # Test it
+            try:
+                await self._write_while_connected(self._working_query_cmd)
+                await asyncio.sleep(0.2)
+            except Exception as e:
+                LOGGER.debug("%s: Cached command failed: %s", self.name, e)
+            return
+        
+        # Auto-detection: try each command and see which gets a response
+        LOGGER.info("%s: Auto-detecting working query command (testing %d commands)...", 
+                    self.name, len(QUERY_COMMANDS))
+        
+        for cmd, description in QUERY_COMMANDS:
+            try:
+                self._notification_received = False
+                LOGGER.debug("%s: Testing: %s -> %s", self.name, description, 
+                           ' '.join(f'{x:02x}' for x in cmd))
+                
+                await self._write_while_connected(cmd)
+                await asyncio.sleep(0.4)  # Wait for response
+                
+                if self._notification_received:
+                    LOGGER.info("%s: ✓ Found working command: %s", self.name, description)
+                    self._working_query_cmd = cmd
+                    self._save_working_query_cmd(cmd, description)
+                    self._query_detection_done = True
+                    return
+                    
+            except Exception as e:
+                LOGGER.debug("%s: Command failed: %s - %s", self.name, description, e)
+                continue
+        
+        LOGGER.info("%s: No query command found (device may not support state queries)", self.name)
+        self._query_detection_done = True
+
     @retry_bluetooth_connection_error
     async def update(self):
         try:
             await self._ensure_connected()
+
+            # Query device state using auto-detected command
+            # if self._read_uuid and self._client and self._client.is_connected:
+            #     try:
+            #         await self.query_state()
+            #     except Exception as e:
+            #         LOGGER.debug("%s: Could not query state: %s", self.name, e)
 
             # PROBLEMS WITH STATUS VALUE, I HAVE NOT VALUE TO WRITE AND GET STATUS
             if(self._is_on is None):
@@ -517,6 +714,8 @@ class BLEDOMInstance:
             #await self._write([0x7e, 0x00, 0x10])
             #await self._write([0xef, 0x01, 0x77])
             #await self._write([0x10])
+            #await self._write([0x25, 0x00])
+            #await self._write([0x25, 0x02])
             #await asyncio.wait_for(future, 5.0)
             #await self._device.stop_notify(self._read_uuid)
             #res = future.result()
@@ -590,15 +789,17 @@ class BLEDOMInstance:
             #login commands
             await self._login_command()
 
+            # Enable notifications (simple method, no manual CCCD)
             try:
                 if not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
                     if self._read_uuid is not None and self._read_uuid != "None":
-                        LOGGER.debug("%s: Subscribe to notifications; RSSI: %s", self.name, self.rssi)
+                        LOGGER.debug("%s: Enabling notifications; RSSI: %s", self.name, self.rssi)
                         await client.start_notify(self._read_uuid, self._notification_handler)
+                        LOGGER.info("%s: Notifications enabled", self.name)
                     else:
                         LOGGER.warning("%s: Read UUID not resolved (value: %s), skipping notifications", self.name, self._read_uuid)
             except Exception as e:
-                LOGGER.error("Error during connection: %s", e)
+                LOGGER.warning("%s: Notifications could not be enabled: %s", self.name, e)
 
     async def _login_command(self):
         try:
@@ -634,7 +835,38 @@ class BLEDOMInstance:
 
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
-        LOGGER.debug("%s: Notification received: %s", self.name, data.hex())
+        self._notification_received = True  # Mark that we got a response
+        LOGGER.info("%s: ✓ Notification received (%d bytes): %s", self.name, len(data), ' '.join(f'{x:02x}' for x in data))
+        
+        # Parse notification data if available
+        if len(data) >= 9 and data[0] == 0x7e and data[8] == 0xef:
+            # Valid response packet
+            cmd_type = data[2]
+            
+            # Status response (0x01)
+            if cmd_type == 0x01:
+                # Power state might be in data[3]
+                power_state = data[3]
+                if power_state in [0x23, 0xf0, 0x01]:
+                    self._is_on = True
+                    LOGGER.debug("%s: Parsed power state: ON", self.name)
+                elif power_state in [0x24, 0x00]:
+                    self._is_on = False
+                    LOGGER.debug("%s: Parsed power state: OFF", self.name)
+                
+                # Try to parse RGB color if available
+                if len(data) >= 8:
+                    r, g, b = data[4], data[5], data[6]
+                    if r != 0xff or g != 0xff or b != 0xff:  # Not default/invalid values
+                        self._rgb_color = (r, g, b)
+                        LOGGER.debug("%s: Parsed RGB color: (%d, %d, %d)", self.name, r, g, b)
+                
+                # Brightness might be in data[7]
+                if len(data) >= 8 and data[7] != 0xff:
+                    brightness_percent = data[7]
+                    self._brightness = int(brightness_percent * 255 / 100)
+                    LOGGER.debug("%s: Parsed brightness: %d%%", self.name, brightness_percent)
+        
         return
 
     def _resolve_characteristics(self, services: BleakGATTServiceCollection) -> bool:
