@@ -837,7 +837,7 @@ async def main():
         if response == 'y':
             discovery.generate_report()
         
-        print("\nProcess completed!")
+        print("\nProcess completed if you discover commands to turn on an turn off you can post your final report in https://github.com/dave-code-ruiz/elkbledom/issues !")
         
     except KeyboardInterrupt:
         print("\n\nProcess interrupted by user")
