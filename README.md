@@ -30,15 +30,7 @@ or as `bluez-deprecated-tools` in Arch:
 paru -S bluez-deprecated-tools
 ```
 
-BTScan.py relies on bluepy, and the integration relies on bleak-retry-connector and bleak pip packages.
-
-```
-pip install -r requirements.txt
-```
-
 ## Supported strips
-
-You can scan BT device with BTScan.py in my repository exec: `sudo python3 BTScan.py` to find info to discover new supported strips
 
 Code supports led strips whose name begins with "ELK-BLE" or "MELK" or "ELK-BULB".
 
@@ -80,35 +72,22 @@ If your strip show some uuid like:
 
 Go to your correct repository: https://www.home-assistant.io/integrations/led_ble/
 
-If your uuid is none of the above, create issue with: 1- strip name 2- your results uuid 3- handle information
+# Unsupported strips
 
-You can use gatttool to try discover your turn on/off command with:
-
-```
-sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e00040100000000ef # POWERON
-sudo gatttool -i hci0 -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0004000000ff00ef # POWEROFF
-
-#ANOTHER TURN ON COMMANDS
-#7e0404f00001ff00ef
-#7e0004f00001ff00ef
-#7e00040100000000ef
-#7e0704FF00010201ef
-
-#ANOTHER TURN OFF COMMANDS
-#7e0404000000ff00ef
-#7e00040100000000ef
-#7e0004000000ff00ef
-#7e00040000000200ef
+Launch BTScan.py
 
 ```
-
-or
-
+git clone https://github.com/dave-code-ruiz/elkbledom
+cd elkbledom
+pip install -r requirements.txt
+python3 BTScan.py
 ```
-sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e000503ff000000ef # RED
-sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e0005030000ff00ef # BLUE
-sudo gatttool -b be:59:7a:00:08:xx --char-write-req -a 0x0009 -n 7e00050300ff0000ef # GREEN
-```
+
+You can scan BT device with BTScan.py in my repository to find info to discover new supported strips
+
+Create issue in https://github.com/dave-code-ruiz/elkbledom/issues with results of BTScan.py (BTScan.py create a json file with info i need)
+
+If no command works for you, i can not helps you, you can try to use wireshark or similar software to discover commands to turn on, turn off, ... your strip , if you discover this post new issue with this information.
 
 ## Installation
 
