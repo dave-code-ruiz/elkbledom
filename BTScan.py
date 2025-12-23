@@ -1,235 +1,812 @@
-from bluepy.btle import Scanner, DefaultDelegate, BTLEDisconnectError, Peripheral, BTLEException
-from queue import Queue
-from threading import Thread
-import logging
+#!/usr/bin/env python3
+"""
+Herramienta de descubrimiento y prueba de tiras LED BLE
+Ayuda a encontrar comandos para nuevas tiras LED que luego se añaden a elkbledom.py
+"""
 
+import asyncio
+import logging
+from bleak import BleakScanner, BleakClient
+from bleak.backends.device import BLEDevice
+from bleak.exc import BleakError
+import sys
+from typing import List, Dict, Optional, Tuple
+import json
+from datetime import datetime
+
+logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
-class OperationType:
-    LOCK_FULL = 1
-    LOCK_ONE = 2
-    LOCK_NIGHT_MODE = 1
-    UNLOCK = 4
-    GET_REPORT = 5
-    ADJUST_NUMBER_OF_ROTATION = 8
-    START_LEARNING_MODE = 9
-    DELETE_ALL_CONTROLLERS = 10
-    GET_READY_FOR_DELETE_USER = 11
-    BUZZER_REPORT = 12
-    GET_USERS = 13
-    GET_INFORMATION = 14
-    START_UPDATE_MODE = 15
-    GET_KEY = "!"
-    WAIT = "&"
-    DISCONNECT = "#"
-    GET_CHECK_IN_OUT_TIMES = "?"
-    GET_AUTO_LOCK_DAY_TIMES = "+"
-    LEARN_SUCCESS = "*"
+# Características conocidas de elkbledom.py
+KNOWN_WRITE_UUIDS = [
+    "0000fff3-0000-1000-8000-00805f9b34fb",
+    "0000ffe1-0000-1000-8000-00805f9b34fb",
+]
 
-class BleServicesAndChracteristicsChars:
-    CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb"
-    BLE_SERVICES = ["00035b03-58e6-07dd-021a-08123a000300","49535343-FE7D-4AE5-8FA9-9FAFD205E455","6e400001-b5a3-f393-e0a9-e50e24dcca9e"]
-    BLE_WRITE_CHARACTERISTICS = {"00035b03-58e6-07dd-021a-08123a000301","49535343-1E4D-4BD9-BA61-23C647249616","6e400002-b5a3-f393-e0a9-e50e24dcca9e"}
-    BLE_READ_CHARACTERISTICS = {"00035b03-58e6-07dd-021a-08123a0003ff","49535343-1E4D-4BD9-BA61-23C647249616","6e400003-b5a3-f393-e0a9-e50e24dcca9e"}
-    DEVICE_NAME_CONTENT = "UTOPIC"
+KNOWN_READ_UUIDS = [
+    "0000fff4-0000-1000-8000-00805f9b34fb",
+    "0000ffe2-0000-1000-8000-00805f9b34fb",
+]
+
+# Comandos conocidos de elkbledom.py
+KNOWN_TURN_ON = [
+    [0x7e, 0x04, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+    [0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+    [0x7e, 0x00, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0xef],
+    [0x7e, 0x07, 0x04, 0xff, 0x00, 0x01, 0x02, 0x01, 0xef],
+]
+
+KNOWN_TURN_OFF = [
+    [0x7e, 0x04, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+    [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+    [0x7e, 0x07, 0x04, 0x00, 0x00, 0x00, 0x02, 0x00, 0xef],
+]
+
+KNOWN_WHITE = [
+    [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+    [0x7e, 0x07, 0x05, 0x01, 0xbb, 0xff, 0x02, 0x01],
+]
+
+KNOWN_COLOR_TEMP = [
+    [0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef],
+    [0x7e, 0x06, 0x05, 0x02, 0xbb, 0xbb, 0xff, 0x08, 0xef],
+]
+
+# 30+ NUEVOS COMANDOS basados en protocolos BLE LED comunes encontrados en foros y documentación
+NEW_TURN_ON_COMMANDS = [
+    # Variantes del protocolo 0x7e con diferentes prefijos
+    [0x7e, 0x01, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+    [0x7e, 0x02, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+    [0x7e, 0x03, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+    [0x7e, 0x05, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+    [0x7e, 0x06, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
+    [0x7e, 0x08, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xef],
     
-class cDelegate(DefaultDelegate):
+    # Protocolo corto (algunas tiras usan comandos más cortos)
+    [0xcc, 0x23, 0x33],
+    [0xcc, 0x24, 0x33],
+    [0x7e, 0x04, 0x01, 0xef],
+    [0x7e, 0x00, 0x01, 0xef],
+    
+    # Protocolo alternativo 0xaa (usado en algunos controladores Magic Home)
+    [0xaa, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55],
+    [0xaa, 0x01, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55],
+    
+    # Variantes con byte de control diferente
+    [0x7e, 0x00, 0x04, 0xff, 0x01, 0x01, 0xff, 0x00, 0xef],
+    [0x7e, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01, 0x00, 0xef],
+    [0x7e, 0x00, 0x04, 0xaa, 0x00, 0x01, 0xff, 0x00, 0xef],
+    
+    # Comandos encontrados en controladoras Triones/Happy Lighting
+    [0x7e, 0x07, 0x04, 0x01, 0xff, 0x01, 0x02, 0x01, 0xef],
+    [0x7e, 0x00, 0x04, 0xf1, 0x00, 0x01, 0xff, 0x00, 0xef],
+    
+    # Protocolo simple binario
+    [0x01, 0xff, 0x00],
+    [0xff, 0x01],
+    [0x01],
+    
+    # Comandos tipo Zengge/Magic Light
+    [0x71, 0x23, 0x0f],
+    [0x71, 0x24, 0x0f],
+    
+    # Variantes con checksum diferente
+    [0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xff],
+    [0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xfe],
+    [0x7e, 0x00, 0x04, 0xf0, 0x00, 0x01, 0xff, 0x00, 0xee],
+    
+    # Comandos encontrados en Banggood LED strips
+    [0x7e, 0x00, 0x03, 0xff, 0x00, 0x00, 0x00, 0x00, 0xef],
+    [0x7e, 0x04, 0x03, 0xff, 0x00, 0x01, 0xff, 0x00, 0xef],
+    
+    # Otros protocolos alternativos
+    [0xef, 0x01, 0x77],
+    [0xbb, 0x01, 0x00, 0x01],
+    [0x55, 0xaa, 0x01],
+]
+
+NEW_TURN_OFF_COMMANDS = [
+    # Variantes del protocolo 0x7e con diferentes prefijos
+    [0x7e, 0x01, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+    [0x7e, 0x02, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+    [0x7e, 0x03, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+    [0x7e, 0x05, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+    [0x7e, 0x06, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+    [0x7e, 0x08, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+    
+    # Protocolo corto
+    [0xcc, 0x24, 0x33],
+    [0xcc, 0x23, 0x34],
+    [0x7e, 0x04, 0x00, 0xef],
+    [0x7e, 0x00, 0x00, 0xef],
+    
+    # Protocolo alternativo 0xaa
+    [0xaa, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55],
+    [0xaa, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55],
+    
+    # Variantes con byte de control diferente
+    [0x7e, 0x00, 0x04, 0x00, 0x01, 0x00, 0xff, 0x00, 0xef],
+    [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef],
+    [0x7e, 0x00, 0x04, 0xaa, 0x00, 0x00, 0xff, 0x00, 0xef],
+    
+    # Comandos Triones/Happy Lighting
+    [0x7e, 0x07, 0x04, 0x00, 0x00, 0x00, 0x02, 0x00, 0xef],
+    [0x7e, 0x00, 0x04, 0xf1, 0x00, 0x00, 0xff, 0x00, 0xef],
+    
+    # Protocolo simple binario
+    [0x00, 0x00, 0x00],
+    [0xff, 0x00],
+    [0x00],
+    
+    # Comandos tipo Zengge/Magic Light
+    [0x71, 0x24, 0x0f],
+    [0x71, 0x23, 0x0e],
+    
+    # Variantes con checksum diferente
+    [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xff],
+    [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xfe],
+    [0x7e, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0x00, 0xee],
+    
+    # Comandos Banggood
+    [0x7e, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef],
+    [0x7e, 0x04, 0x03, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef],
+    
+    # Otros protocolos alternativos
+    [0xef, 0x00, 0x77],
+    [0xbb, 0x00, 0x00, 0x00],
+    [0x55, 0xaa, 0x00],
+]
+
+# Comandos para establecer color RGB
+NEW_COLOR_COMMANDS = [
+    # Formato: función que toma (r, g, b) y retorna comando
+    lambda r, g, b: [0x7e, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xef],  # Standard
+    lambda r, g, b: [0x7e, 0x04, 0x05, 0x03, r, g, b, 0x00, 0xef],
+    lambda r, g, b: [0x7e, 0x07, 0x05, 0x03, r, g, b, 0x02, 0xef],
+    lambda r, g, b: [0xaa, 0x01, 0x03, r, g, b, 0x00, 0x00, 0x55],  # Magic Home
+    lambda r, g, b: [0x56, r, g, b, 0x00, 0xf0, 0xaa],  # Zengge
+    lambda r, g, b: [0x7e, 0x00, 0x03, r, g, b, 0x00, 0x00, 0xef],
+    lambda r, g, b: [0x31, r, g, b, 0x00, 0x00, 0x0f],  # Triones
+    lambda r, g, b: [0x7e, 0x01, 0x05, 0x03, r, g, b, 0x00, 0xef],
+    lambda r, g, b: [0x7e, 0x02, 0x05, 0x03, r, g, b, 0x00, 0xef],
+    lambda r, g, b: [0x7e, 0x05, 0x05, 0x03, r, g, b, 0x00, 0xef],
+]
+
+# Comandos para blanco
+NEW_WHITE_COMMANDS = [
+    lambda brightness: [0x7e, 0x00, 0x01, brightness, 0x00, 0x00, 0x00, 0x00, 0xef],
+    lambda brightness: [0x7e, 0x04, 0x01, brightness, 0x00, 0x00, 0x00, 0x00, 0xef],
+    lambda brightness: [0x7e, 0x07, 0x05, 0x01, brightness, 0xff, 0x02, 0x01],
+    lambda brightness: [0xaa, 0x01, 0x01, 0x00, 0x00, 0x00, brightness, 0x00, 0x55],
+    lambda brightness: [0x56, 0x00, 0x00, 0x00, brightness, 0xf0, 0xaa],
+    lambda brightness: [0x7e, 0x00, 0x06, brightness, 0x00, 0x00, 0x00, 0x00, 0xef],
+    lambda brightness: [0x31, 0x00, 0x00, 0x00, brightness, 0x00, 0x0f],
+    lambda brightness: [0x7e, 0x01, 0x01, brightness, 0x00, 0x00, 0x00, 0x00, 0xef],
+]
+
+# Comandos para temperatura de color
+NEW_COLOR_TEMP_COMMANDS = [
+    lambda warm, cold: [0x7e, 0x00, 0x05, 0x02, warm, cold, 0x00, 0x00, 0xef],
+    lambda warm, cold: [0x7e, 0x06, 0x05, 0x02, warm, cold, 0xff, 0x08, 0xef],
+    lambda warm, cold: [0x7e, 0x04, 0x05, 0x02, warm, cold, 0x00, 0x00, 0xef],
+    lambda warm, cold: [0xaa, 0x01, 0x02, warm, cold, 0x00, 0x00, 0x00, 0x55],
+    lambda warm, cold: [0x7e, 0x07, 0x05, 0x02, warm, cold, 0x02, 0x00, 0xef],
+    lambda warm, cold: [0x56, 0x00, 0x00, 0x00, warm, cold, 0xaa],
+    lambda warm, cold: [0x7e, 0x01, 0x05, 0x02, warm, cold, 0x00, 0x00, 0xef],
+]
+
+
+class LEDStripDiscovery:
     def __init__(self):
-        DefaultDelegate.__init__(self)
-
-    def handleDiscovery(self, dev, isNewDev, isNewData):
-        if isNewDev:
-            print("Discovered device", dev.addr)
-        elif isNewData:
-            print("Received new data from", dev.addr)
-
-class Discovery():
-    def __init__(self):
-        scanner = Scanner().withDelegate(cDelegate())
-        self.devices = scanner.scan(10.0)
-        self.utopicdevice = []
-
-    def getDevices(self, address = None):
-        if address is None:
-            for dev in self.devices:
-                print("Device %s (%s), RSSI=%d dB" % (dev.addr, dev.addrType, dev.rssi))
-                utdv = UtopicDevice(dev)
-                if utdv.getDevice() is not None:
-                    self.utopicdevice.append(utdv)
-        else:
-            print("return device address")
-        return self.utopicdevice
-
-class UtopicDevice():
-    def __init__(self, device):
-        self.device = device
-        self.utopicdevice = None
-        self.writeChar = None
-        self.readChar = None
-        self.notChar = None
-        for (adtype, desc, value) in device.getScanData():
-            print("  %s = %s" % (desc, value))
-            if value == BleServicesAndChracteristicsChars.DEVICE_NAME_CONTENT:
-                self.utopicdevice = self
-            if value in BleServicesAndChracteristicsChars.BLE_SERVICES:
-                self.serviceuuid = value
-
-    def getAddress(self):
-        return self.device.addr
-
-    def getServiceUUID(self):
-        return self.serviceuuid
-
-    def getDevice(self):
-        return self.utopicdevice
-
-    def setWriteCharact(self, writeChar):
-        self.writeChar = writeChar
-
-    def getWriteCharact(self):
-        return self.writeChar
-
-    def setReadCharact(self, readChar):
-        self.readChar = readChar
-
-    def getReadCharact(self):
-        return self.readChar
-
-    def setNotifyCharact(self, notChar):
-        self.notChar = notChar
-
-    def getNotifyCharact(self):
-        return self.notChar
-
-class BLEMagic(DefaultDelegate):
-
-    def __init__(self):
-        super().__init__()
-        discover = Discovery()
-        self.devices = discover.getDevices()
-        self.utopicKey = None
-        self.utopicdevices = []
-        self.periph = None
+        self.discovered_devices: List[BLEDevice] = []
+        self.test_results = {
+            'device_info': {},
+            'characteristics': {},
+            'working_commands': {
+                'turn_on': [],
+                'turn_off': [],
+                'color': [],
+                'white': [],
+                'color_temp': []
+            },
+            'custom_commands': []
+        }
         
-        # create the TX queue
-        self._tx_queue = Queue()
-
-        # start the bluepy IO thread
-        self._bluepy_thread = Thread(target=self._bluepy_handler)
-        self._bluepy_thread.name = "bluepy_handler"
-        self._bluepy_thread.daemon = True
-        self._bluepy_thread.start()
-
-    def handleNotification(self, cHandle, data):
-        """This is the notification delegate function from DefaultDelegate
-        """
-        print("\nReceived Notification: %s Handle: %s",str(data), cHandle)
-
-    def _bluepy_handler(self):
-        """This is the bluepy IO thread
-        :return:
-        """
-        #ADDRESS OF MAGIC: 04:91:62:25:cb:6f
-        for utopicdevice in self.devices:
-            serviceuuid = utopicdevice.getServiceUUID()
-            address = utopicdevice.getAddress()
-            # address = "04:91:62:25:cb:6f"
-            print(address)
-            if serviceuuid in BleServicesAndChracteristicsChars.BLE_SERVICES:
-                try:
-                    self.periph = Peripheral(address.upper())
-                    self.periph.withDelegate(self)
-                    print("conecta")
-                except BTLEDisconnectError as e:
-                    _LOGGER.error("Disconected: %s", e)
-                except BTLEException as e:
-                    _LOGGER.error("Error: %s", e)
-                if self.periph is not None:
-                    service = self.periph.getServiceByUUID(serviceuuid)
-                    print(service)
-                    #for charact in service.getCharacteristics():
-                    descs = service.getDescriptors()
-                    for desc in descs:
-                        str_uuid = str(desc.uuid).lower()
-                        print(str_uuid, desc.handle)
-                        if str_uuid in BleServicesAndChracteristicsChars.BLE_WRITE_CHARACTERISTICS:
-                            utopicdevice.setWriteCharact(desc.handle)
-                        if str_uuid in BleServicesAndChracteristicsChars.CLIENT_CHARACTERISTIC_CONFIG:
-                            utopicdevice.setNotifyCharact(desc.handle)
-                        if str_uuid in BleServicesAndChracteristicsChars.BLE_READ_CHARACTERISTICS:
-                            #state = self.kv2dict(charact.read().decode())
-                            #print(state)
-                            utopicdevice.setReadCharact(desc.handle)
-            subscribe_bytes = b'\x01\x00'
-            if utopicdevice.getReadCharact() is not None and utopicdevice.getWriteCharact() is not None:
-                response = self.periph.writeCharacteristic(utopicdevice.getNotifyCharact(), subscribe_bytes, withResponse=True)
-                print(response)
-                # now that we're subscribed for notifications, waiting for TX/RX...
-                while True:
-                    while not self._tx_queue.empty():
-                        msg = self._tx_queue.get_nowait()
-                        msg_bytes = bytes(msg, encoding="utf-8")
-                        self.periph.writeCharacteristic(utopicdevice.getWriteCharact(), msg_bytes)
-
-                    self.periph.waitForNotifications(1.0)
-            else:
-                print("not read")
-            self.utopicdevices.append(utopicdevice)
+    async def scan_devices(self, duration: int = 10) -> List[BLEDevice]:
+        """Escanea dispositivos BLE cercanos"""
+        print(f"\n{'='*60}")
+        print(f"🔍 Escaneando dispositivos Bluetooth LE durante {duration} segundos...")
+        print(f"{'='*60}\n")
+        
+        devices = await BleakScanner.discover(timeout=duration)
+        self.discovered_devices = [d for d in devices if d.name]  # Solo dispositivos con nombre
+        
+        return self.discovered_devices
     
-    def kv2dict(kvstr, sep=";"):
-        result = {}
-        for x in kvstr.split(sep, 50):
-            (k, v) = x.split("=", 2)
-            result[k] = v
-        return result
-
-    def get_key(self):
-        return self.utopicKey
-
-    def getDevices(self):
-        return self.utopicdevices
-
-    def onDataReceived(self, data):
-        #String data = new String(dataRaw);
-        if(data.contains("DEV_KEY:")):
-            key = data.substring(8,data.length())
-            self.utopicKey = key
-            # Database.getInstance().addNewBarrel(UtopicDevice.SelectedUtopicDevice.getMacId(),UtopicDevice.SelectedUtopicDevice.getName(),SelectedTag);
-            # RecognitionState = eRecognitionState.S2_SENDING_OPEN;
-
-    # Utopic
-    def create_operation(self, type):
-        if type in (OperationType.GET_KEY, OperationType.DISCONNECT, OperationType.GET_CHECK_IN_OUT_TIMES, OperationType.GET_AUTO_LOCK_DAY_TIMES, OperationType.LEARN_SUCCESS):
-            return type
+    def display_devices(self):
+        """Muestra los dispositivos descubiertos"""
+        if not self.discovered_devices:
+            print("❌ No se encontraron dispositivos BLE")
+            return
+        
+        print(f"\n{'='*60}")
+        print("📱 Dispositivos BLE encontrados:")
+        print(f"{'='*60}\n")
+        
+        for idx, device in enumerate(self.discovered_devices, 1):
+            print(f"{idx}. 📍 Dirección: {device.address}")
+            print(f"   📝 Nombre: {device.name or 'Sin nombre'}")
+            print(f"   📡 RSSI: {device.rssi} dBm")
+            print(f"   {'-'*56}")
+    
+    async def select_device(self) -> Optional[BLEDevice]:
+        """Permite al usuario seleccionar un dispositivo"""
+        self.display_devices()
+        
+        if not self.discovered_devices:
+            return None
+        
+        while True:
+            try:
+                choice = input(f"\n🎯 Selecciona un dispositivo (1-{len(self.discovered_devices)}) o 'q' para salir: ").strip()
+                
+                if choice.lower() == 'q':
+                    return None
+                
+                idx = int(choice) - 1
+                if 0 <= idx < len(self.discovered_devices):
+                    device = self.discovered_devices[idx]
+                    print(f"\n✅ Dispositivo seleccionado: {device.name} ({device.address})")
+                    
+                    self.test_results['device_info'] = {
+                        'name': device.name,
+                        'address': device.address,
+                        'rssi': device.rssi
+                    }
+                    
+                    return device
+                else:
+                    print("❌ Número inválido, intenta de nuevo")
+            except ValueError:
+                print("❌ Entrada inválida, introduce un número")
+    
+    async def discover_characteristics(self, device: BLEDevice) -> Dict:
+        """Descubre las características BLE del dispositivo"""
+        print(f"\n{'='*60}")
+        print(f"🔎 Analizando características del dispositivo...")
+        print(f"{'='*60}\n")
+        
+        characteristics = {
+            'write': [],
+            'read': [],
+            'notify': [],
+            'all': []
+        }
+        
+        try:
+            async with BleakClient(device.address, timeout=20.0) as client:
+                print(f"✅ Conectado a {device.name}\n")
+                
+                for service in client.services:
+                    print(f"📦 Servicio: {service.uuid}")
+                    
+                    for char in service.characteristics:
+                        char_info = {
+                            'uuid': char.uuid,
+                            'properties': char.properties,
+                            'service': service.uuid
+                        }
+                        characteristics['all'].append(char_info)
+                        
+                        print(f"   └─ Característica: {char.uuid}")
+                        print(f"      Propiedades: {', '.join(char.properties)}")
+                        
+                        if 'write' in char.properties or 'write-without-response' in char.properties:
+                            characteristics['write'].append(char_info)
+                            print(f"      ✍️  ESCRITURA disponible")
+                        
+                        if 'read' in char.properties:
+                            characteristics['read'].append(char_info)
+                            print(f"      📖 LECTURA disponible")
+                        
+                        if 'notify' in char.properties:
+                            characteristics['notify'].append(char_info)
+                            print(f"      🔔 NOTIFICACIÓN disponible")
+                        
+                        print()
+                
+                self.test_results['characteristics'] = characteristics
+                
+        except Exception as e:
+            print(f"❌ Error al conectar: {e}")
+            return characteristics
+        
+        return characteristics
+    
+    async def select_write_characteristic(self, characteristics: Dict) -> Optional[str]:
+        """Selecciona la característica de escritura"""
+        print(f"\n{'='*60}")
+        print("✍️  Selección de característica de ESCRITURA")
+        print(f"{'='*60}\n")
+        
+        # Verificar si hay características conocidas
+        write_chars = characteristics.get('write', [])
+        
+        if not write_chars:
+            print("❌ No se encontraron características de escritura")
+            return None
+        
+        # Buscar características conocidas
+        known_found = []
+        for char in write_chars:
+            if char['uuid'] in KNOWN_WRITE_UUIDS:
+                known_found.append(char)
+        
+        if known_found:
+            print(f"✅ Se encontraron {len(known_found)} características conocidas:\n")
+            for char in known_found:
+                print(f"   • {char['uuid']}")
+            
+            if len(known_found) == 1:
+                selected = known_found[0]['uuid']
+                print(f"\n✅ Usando característica conocida: {selected}")
+                return selected
+        
+        # Si no hay conocidas o hay múltiples, mostrar todas
+        print(f"\n📋 Características de escritura disponibles:\n")
+        for idx, char in enumerate(write_chars, 1):
+            known = "⭐ CONOCIDA" if char['uuid'] in KNOWN_WRITE_UUIDS else ""
+            print(f"{idx}. {char['uuid']} {known}")
+        
+        while True:
+            try:
+                choice = input(f"\n🎯 Selecciona característica (1-{len(write_chars)}): ").strip()
+                idx = int(choice) - 1
+                
+                if 0 <= idx < len(write_chars):
+                    selected = write_chars[idx]['uuid']
+                    print(f"\n✅ Característica seleccionada: {selected}")
+                    return selected
+                else:
+                    print("❌ Número inválido")
+            except ValueError:
+                print("❌ Entrada inválida")
+    
+    async def test_command(self, client: BleakClient, char_uuid: str, command: List[int], 
+                          description: str, ask_user: bool = True) -> bool:
+        """Prueba un comando en el dispositivo"""
+        try:
+            cmd_bytes = bytes(command)
+            cmd_hex = ' '.join(f'{b:02x}' for b in cmd_bytes)
+            
+            print(f"\n📤 Probando: {description}")
+            print(f"   Comando: {cmd_hex}")
+            
+            await client.write_gatt_char(char_uuid, cmd_bytes, response=False)
+            
+            if ask_user:
+                while True:
+                    response = input("   ❓ ¿Funcionó el comando? (s/n/r para relanzar): ").strip().lower()
+                    
+                    if response == 's':
+                        print("   ✅ Comando funcional registrado")
+                        return True
+                    elif response == 'n':
+                        print("   ❌ Comando no funcional")
+                        return False
+                    elif response == 'r':
+                        print("   🔄 Relanzando comando...")
+                        await client.write_gatt_char(char_uuid, cmd_bytes, response=False)
+                    else:
+                        print("   ⚠️  Respuesta inválida (s/n/r)")
+            else:
+                await asyncio.sleep(0.5)
+                return False
+                
+        except Exception as e:
+            print(f"   ❌ Error: {e}")
+            return False
+    
+    async def test_power_commands(self, device: BLEDevice, char_uuid: str):
+        """Prueba comandos de encendido/apagado"""
+        print(f"\n{'='*60}")
+        print("🔌 PROBANDO COMANDOS DE ENCENDIDO/APAGADO")
+        print(f"{'='*60}\n")
+        
+        try:
+            async with BleakClient(device.address, timeout=20.0) as client:
+                print(f"✅ Conectado a {device.name}\n")
+                
+                # Probar comandos conocidos de encendido
+                print("🟢 COMANDOS DE ENCENDIDO CONOCIDOS:")
+                print("-" * 60)
+                for idx, cmd in enumerate(KNOWN_TURN_ON, 1):
+                    if await self.test_command(client, char_uuid, cmd, 
+                                              f"Encender #{idx} (conocido)"):
+                        self.test_results['working_commands']['turn_on'].append({
+                            'command': cmd,
+                            'description': f'Known turn on #{idx}',
+                            'type': 'known'
+                        })
+                
+                # Probar nuevos comandos de encendido
+                print(f"\n🆕 NUEVOS COMANDOS DE ENCENDIDO ({len(NEW_TURN_ON_COMMANDS)} comandos):")
+                print("-" * 60)
+                for idx, cmd in enumerate(NEW_TURN_ON_COMMANDS, 1):
+                    if await self.test_command(client, char_uuid, cmd, 
+                                              f"Encender #{idx} (nuevo)"):
+                        self.test_results['working_commands']['turn_on'].append({
+                            'command': cmd,
+                            'description': f'New turn on #{idx}',
+                            'type': 'new'
+                        })
+                
+                # Probar comandos conocidos de apagado
+                print(f"\n🔴 COMANDOS DE APAGADO CONOCIDOS:")
+                print("-" * 60)
+                for idx, cmd in enumerate(KNOWN_TURN_OFF, 1):
+                    if await self.test_command(client, char_uuid, cmd, 
+                                              f"Apagar #{idx} (conocido)"):
+                        self.test_results['working_commands']['turn_off'].append({
+                            'command': cmd,
+                            'description': f'Known turn off #{idx}',
+                            'type': 'known'
+                        })
+                
+                # Probar nuevos comandos de apagado
+                print(f"\n🆕 NUEVOS COMANDOS DE APAGADO ({len(NEW_TURN_OFF_COMMANDS)} comandos):")
+                print("-" * 60)
+                for idx, cmd in enumerate(NEW_TURN_OFF_COMMANDS, 1):
+                    if await self.test_command(client, char_uuid, cmd, 
+                                              f"Apagar #{idx} (nuevo)"):
+                        self.test_results['working_commands']['turn_off'].append({
+                            'command': cmd,
+                            'description': f'New turn off #{idx}',
+                            'type': 'new'
+                        })
+                        
+        except Exception as e:
+            print(f"\n❌ Error durante las pruebas: {e}")
+    
+    async def test_color_commands(self, device: BLEDevice, char_uuid: str):
+        """Prueba comandos de color RGB"""
+        print(f"\n{'='*60}")
+        print("🎨 PROBANDO COMANDOS DE COLOR RGB")
+        print(f"{'='*60}\n")
+        
+        # Colores de prueba
+        test_colors = [
+            (255, 0, 0, "Rojo"),
+            (0, 255, 0, "Verde"),
+            (0, 0, 255, "Azul"),
+        ]
+        
+        try:
+            async with BleakClient(device.address, timeout=20.0) as client:
+                print(f"✅ Conectado a {device.name}\n")
+                
+                for idx, cmd_func in enumerate(NEW_COLOR_COMMANDS, 1):
+                    print(f"\n🎨 Probando comando de color #{idx}:")
+                    worked = False
+                    
+                    for r, g, b, color_name in test_colors:
+                        cmd = cmd_func(r, g, b)
+                        if await self.test_command(client, char_uuid, cmd, 
+                                                  f"Color {color_name} (R:{r}, G:{g}, B:{b})"):
+                            worked = True
+                            break
+                    
+                    if worked:
+                        self.test_results['working_commands']['color'].append({
+                            'command_template': 'lambda r, g, b: ' + str([hex(x) if isinstance(x, int) else 'r' if x == test_colors[0][0] else 'g' if x == test_colors[0][1] else 'b' for x in cmd_func(0, 0, 0)]),
+                            'description': f'Color command #{idx}',
+                            'test_values': test_colors
+                        })
+                        
+        except Exception as e:
+            print(f"\n❌ Error durante las pruebas: {e}")
+    
+    async def test_white_commands(self, device: BLEDevice, char_uuid: str):
+        """Prueba comandos de luz blanca"""
+        print(f"\n{'='*60}")
+        print("⚪ PROBANDO COMANDOS DE LUZ BLANCA")
+        print(f"{'='*60}\n")
+        
+        try:
+            async with BleakClient(device.address, timeout=20.0) as client:
+                print(f"✅ Conectado a {device.name}\n")
+                
+                # Probar comandos conocidos
+                print("⚪ COMANDOS DE BLANCO CONOCIDOS:")
+                print("-" * 60)
+                for idx, cmd in enumerate(KNOWN_WHITE, 1):
+                    if await self.test_command(client, char_uuid, cmd, 
+                                              f"Blanco #{idx} (conocido)"):
+                        self.test_results['working_commands']['white'].append({
+                            'command': cmd,
+                            'description': f'Known white #{idx}',
+                            'type': 'known'
+                        })
+                
+                # Probar nuevos comandos
+                print(f"\n🆕 NUEVOS COMANDOS DE BLANCO ({len(NEW_WHITE_COMMANDS)} comandos):")
+                print("-" * 60)
+                for idx, cmd_func in enumerate(NEW_WHITE_COMMANDS, 1):
+                    cmd = cmd_func(200)  # Prueba con brillo 200
+                    if await self.test_command(client, char_uuid, cmd, 
+                                              f"Blanco #{idx} (brillo: 200)"):
+                        self.test_results['working_commands']['white'].append({
+                            'command_template': f'lambda brightness: {[hex(x) if isinstance(x, int) else "brightness" for x in cmd]}',
+                            'description': f'New white #{idx}',
+                            'type': 'new'
+                        })
+                        
+        except Exception as e:
+            print(f"\n❌ Error durante las pruebas: {e}")
+    
+    async def test_color_temp_commands(self, device: BLEDevice, char_uuid: str):
+        """Prueba comandos de temperatura de color"""
+        print(f"\n{'='*60}")
+        print("🌡️  PROBANDO COMANDOS DE TEMPERATURA DE COLOR")
+        print(f"{'='*60}\n")
+        
+        try:
+            async with BleakClient(device.address, timeout=20.0) as client:
+                print(f"✅ Conectado a {device.name}\n")
+                
+                # Probar comandos conocidos
+                print("🌡️  COMANDOS DE TEMP. COLOR CONOCIDOS:")
+                print("-" * 60)
+                for idx, cmd in enumerate(KNOWN_COLOR_TEMP, 1):
+                    if await self.test_command(client, char_uuid, cmd, 
+                                              f"Temp. color #{idx} (conocido)"):
+                        self.test_results['working_commands']['color_temp'].append({
+                            'command': cmd,
+                            'description': f'Known color temp #{idx}',
+                            'type': 'known'
+                        })
+                
+                # Probar nuevos comandos
+                print(f"\n🆕 NUEVOS COMANDOS DE TEMP. COLOR ({len(NEW_COLOR_TEMP_COMMANDS)} comandos):")
+                print("-" * 60)
+                for idx, cmd_func in enumerate(NEW_COLOR_TEMP_COMMANDS, 1):
+                    cmd = cmd_func(50, 50)  # 50% cálido, 50% frío
+                    if await self.test_command(client, char_uuid, cmd, 
+                                              f"Temp. color #{idx} (50% cálido/frío)"):
+                        self.test_results['working_commands']['color_temp'].append({
+                            'command_template': f'lambda warm, cold: {[hex(x) if isinstance(x, int) else "warm" if x == 50 else "cold" for x in cmd]}',
+                            'description': f'New color temp #{idx}',
+                            'type': 'new'
+                        })
+                        
+        except Exception as e:
+            print(f"\n❌ Error durante las pruebas: {e}")
+    
+    async def test_custom_commands(self, device: BLEDevice, char_uuid: str):
+        """Permite al usuario probar sus propios comandos"""
+        print(f"\n{'='*60}")
+        print("🛠️  PRUEBA DE COMANDOS PERSONALIZADOS")
+        print(f"{'='*60}\n")
+        
+        print("Puedes probar tus propios comandos en formato hexadecimal.")
+        print("Ejemplo: 7e 00 04 f0 00 01 ff 00 ef")
+        print("Escribe 'q' para terminar.\n")
+        
+        try:
+            async with BleakClient(device.address, timeout=20.0) as client:
+                print(f"✅ Conectado a {device.name}\n")
+                
+                while True:
+                    cmd_input = input("🔧 Introduce comando (hex separado por espacios) o 'q': ").strip()
+                    
+                    if cmd_input.lower() == 'q':
+                        break
+                    
+                    try:
+                        # Parsear comando hexadecimal
+                        cmd = [int(x, 16) for x in cmd_input.split()]
+                        
+                        description = input("   📝 Descripción del comando: ").strip()
+                        
+                        if await self.test_command(client, char_uuid, cmd, description):
+                            self.test_results['custom_commands'].append({
+                                'command': cmd,
+                                'description': description,
+                                'hex': cmd_input
+                            })
+                            
+                    except ValueError:
+                        print("   ❌ Formato inválido. Usa valores hex separados por espacios.")
+                    except Exception as e:
+                        print(f"   ❌ Error: {e}")
+                        
+        except Exception as e:
+            print(f"\n❌ Error durante las pruebas: {e}")
+    
+    def generate_report(self):
+        """Genera un informe completo de los resultados"""
+        print(f"\n{'='*60}")
+        print("📊 INFORME DE DESCUBRIMIENTO DE TIRA LED")
+        print(f"{'='*60}\n")
+        
+        # Información del dispositivo
+        print("📱 INFORMACIÓN DEL DISPOSITIVO:")
+        print("-" * 60)
+        info = self.test_results['device_info']
+        print(f"Nombre: {info.get('name', 'N/A')}")
+        print(f"Dirección MAC: {info.get('address', 'N/A')}")
+        print(f"RSSI: {info.get('rssi', 'N/A')} dBm")
+        
+        # Características
+        print(f"\n🔧 CARACTERÍSTICAS BLE:")
+        print("-" * 60)
+        chars = self.test_results['characteristics']
+        print(f"Escritura: {len(chars.get('write', []))} características")
+        print(f"Lectura: {len(chars.get('read', []))} características")
+        print(f"Notificación: {len(chars.get('notify', []))} características")
+        
+        if chars.get('write'):
+            print(f"\nCaracterísticas de escritura:")
+            for char in chars['write']:
+                print(f"  • {char['uuid']}")
+        
+        # Comandos funcionales
+        working = self.test_results['working_commands']
+        
+        print(f"\n✅ COMANDOS FUNCIONALES ENCONTRADOS:")
+        print("=" * 60)
+        
+        # Encendido
+        if working['turn_on']:
+            print(f"\n🟢 ENCENDIDO ({len(working['turn_on'])} comandos):")
+            for cmd_info in working['turn_on']:
+                cmd_hex = ' '.join(f'{b:02x}' for b in cmd_info['command'])
+                print(f"  • {cmd_info['description']}")
+                print(f"    Comando: {cmd_hex}")
+                print(f"    Tipo: {cmd_info.get('type', 'N/A')}")
         else:
-            utopicKey = self.utopicdevices.getAddress()
-            myMacAdress = '22:33:44:55:66:77' #GetMacAdress()
-            userKey = ""
-            for pos in myMacAdress.split(":"):
-                userKey += pos
-            print(userKey)
-            counter=0
-            counter+=1
+            print(f"\n🟢 ENCENDIDO: ❌ No se encontraron comandos funcionales")
+        
+        # Apagado
+        if working['turn_off']:
+            print(f"\n🔴 APAGADO ({len(working['turn_off'])} comandos):")
+            for cmd_info in working['turn_off']:
+                cmd_hex = ' '.join(f'{b:02x}' for b in cmd_info['command'])
+                print(f"  • {cmd_info['description']}")
+                print(f"    Comando: {cmd_hex}")
+                print(f"    Tipo: {cmd_info.get('type', 'N/A')}")
+        else:
+            print(f"\n🔴 APAGADO: ❌ No se encontraron comandos funcionales")
+        
+        # Color
+        if working['color']:
+            print(f"\n🎨 COLOR RGB ({len(working['color'])} comandos):")
+            for cmd_info in working['color']:
+                print(f"  • {cmd_info['description']}")
+                print(f"    Template: {cmd_info.get('command_template', 'N/A')}")
+        else:
+            print(f"\n🎨 COLOR RGB: ❌ No se encontraron comandos funcionales")
+        
+        # Blanco
+        if working['white']:
+            print(f"\n⚪ BLANCO ({len(working['white'])} comandos):")
+            for cmd_info in working['white']:
+                if 'command' in cmd_info:
+                    cmd_hex = ' '.join(f'{b:02x}' for b in cmd_info['command'])
+                    print(f"  • {cmd_info['description']}")
+                    print(f"    Comando: {cmd_hex}")
+                else:
+                    print(f"  • {cmd_info['description']}")
+                    print(f"    Template: {cmd_info.get('command_template', 'N/A')}")
+        else:
+            print(f"\n⚪ BLANCO: ❌ No se encontraron comandos funcionales")
+        
+        # Temperatura de color
+        if working['color_temp']:
+            print(f"\n🌡️  TEMPERATURA COLOR ({len(working['color_temp'])} comandos):")
+            for cmd_info in working['color_temp']:
+                if 'command' in cmd_info:
+                    cmd_hex = ' '.join(f'{b:02x}' for b in cmd_info['command'])
+                    print(f"  • {cmd_info['description']}")
+                    print(f"    Comando: {cmd_hex}")
+                else:
+                    print(f"  • {cmd_info['description']}")
+                    print(f"    Template: {cmd_info.get('command_template', 'N/A')}")
+        else:
+            print(f"\n🌡️  TEMPERATURA COLOR: ❌ No se encontraron comandos funcionales")
+        
+        # Comandos personalizados
+        if self.test_results['custom_commands']:
+            print(f"\n🛠️  COMANDOS PERSONALIZADOS ({len(self.test_results['custom_commands'])} comandos):")
+            for cmd_info in self.test_results['custom_commands']:
+                print(f"  • {cmd_info['description']}")
+                print(f"    Comando: {cmd_info['hex']}")
+        
+        # Guardar a archivo JSON
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"led_discovery_{info.get('address', 'unknown').replace(':', '')}_{timestamp}.json"
+        
+        try:
+            with open(filename, 'w') as f:
+                json.dump(self.test_results, f, indent=2)
+            print(f"\n💾 Informe guardado en: {filename}")
+        except Exception as e:
+            print(f"\n❌ Error al guardar informe: {e}")
+        
+        print(f"\n{'='*60}\n")
 
-            # hashit = counter + type + settings
-            # self.key = base64.b64encode(hashlib.md5(hashit.encode()).digest())[:16]
-            # try:
-            #     auth.write("M=0;K=".encode() + self.key, True)
-            # except:
-            #     print("ERROR: failed to unlock %s - wrong pincode?" % self.name)
-            # return not self.locked
 
-            # Encryption encryp = new Encryption(new BigInteger(userKey.trim(), 16).longValue(), utopicKey);
-            # byte[] key = encryp.encrypt(counter, operation, settings);
-            # return key;
+async def main():
+    """Función principal"""
+    discovery = LEDStripDiscovery()
+    
+    print("""
+    ╔══════════════════════════════════════════════════════════╗
+    ║   🔍 HERRAMIENTA DE DESCUBRIMIENTO DE TIRAS LED BLE    ║
+    ║                                                          ║
+    ║   Esta herramienta te ayudará a descubrir comandos      ║
+    ║   para tiras LED BLE desconocidas                       ║
+    ╚══════════════════════════════════════════════════════════╝
+    """)
+    
+    try:
+        # 1. Escanear dispositivos
+        await discovery.scan_devices(duration=10)
+        
+        # 2. Seleccionar dispositivo
+        device = await discovery.select_device()
+        if not device:
+            print("\n👋 Proceso cancelado")
+            return
+        
+        # 3. Descubrir características
+        characteristics = await discovery.discover_characteristics(device)
+        
+        # 4. Seleccionar característica de escritura
+        char_uuid = await discovery.select_write_characteristic(characteristics)
+        if not char_uuid:
+            print("\n❌ No se pudo seleccionar característica de escritura")
+            return
+        
+        # 5. Probar comandos de encendido/apagado
+        response = input("\n¿Probar comandos de encendido/apagado? (s/n): ").strip().lower()
+        if response == 's':
+            await discovery.test_power_commands(device, char_uuid)
+        
+        # 6. Probar comandos de blanco
+        response = input("\n¿Probar comandos de luz blanca? (s/n): ").strip().lower()
+        if response == 's':
+            await discovery.test_white_commands(device, char_uuid)
+        
+        # 7. Probar comandos de temperatura de color
+        response = input("\n¿Probar comandos de temperatura de color? (s/n): ").strip().lower()
+        if response == 's':
+            await discovery.test_color_temp_commands(device, char_uuid)
+        
+        # 8. Probar comandos de color RGB
+        response = input("\n¿Probar comandos de color RGB? (s/n): ").strip().lower()
+        if response == 's':
+            await discovery.test_color_commands(device, char_uuid)
+        
+        # 9. Comandos personalizados
+        response = input("\n¿Probar comandos personalizados? (s/n): ").strip().lower()
+        if response == 's':
+            await discovery.test_custom_commands(device, char_uuid)
+        
+        # 10. Generar informe
+        response = input("\n¿Mostrar informe final? (s/n): ").strip().lower()
+        if response == 's':
+            discovery.generate_report()
+        
+        print("\n✅ Proceso completado!")
+        
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Proceso interrumpido por el usuario")
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
 
-    def send(self, message):
-        """Call this function to send a BLE message over the UART service
-        :param message: Message to send
-        :return:
-        """
 
-        # put the message in the TX queue
-        self._tx_queue.put_nowait(message)
-
-Ble = BLEMagic()
+if __name__ == "__main__":
+    asyncio.run(main())
