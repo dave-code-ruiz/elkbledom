@@ -287,6 +287,50 @@ class LEDStripDiscovery:
             async with BleakClient(device.address, timeout=20.0) as client:
                 print(f"Connected to {device.name}\n")
                 
+                # Special login procedure for MELK and MODELX devices
+                # Must be done BEFORE full service discovery or device will disconnect
+                if device.name and (device.name.lower().startswith("melk") or device.name.lower().startswith("modelx")):
+                    print(f"Device {device.name} requires special login procedure...")
+                    print("Getting initial services to find write characteristic...\n")
+                    
+                    # Force service discovery
+                    try:
+                        temp_services = await client.get_services()
+                    except Exception as e:
+                        print(f"Could not get services for login: {e}")
+                        temp_services = client.services
+                    
+                    write_char = None
+                    
+                    for service in temp_services:
+                        for char in service.characteristics:
+                            if char.uuid in KNOWN_WRITE_UUIDS or 'write' in char.properties or 'write-without-response' in char.properties:
+                                write_char = char.uuid
+                                print(f"Found write characteristic: {write_char}")
+                                break
+                        if write_char:
+                            break
+                    
+                    if write_char:
+                        # Execute login sequence
+                        print("Executing login commands...")
+                        try:
+                            await client.write_gatt_char(write_char, bytes([0x7e, 0x07, 0x83]), response=False)
+                            print("  ✓ Sent: 7e 07 83")
+                            await asyncio.sleep(1)
+                            await client.write_gatt_char(write_char, bytes([0x7e, 0x04, 0x04]), response=False)
+                            print("  ✓ Sent: 7e 04 04")
+                            await asyncio.sleep(1)
+                            print("✓ Login procedure completed!\n")
+                        except Exception as e:
+                            print(f"✗ Login procedure failed: {e}\n")
+                            raise
+                    else:
+                        print("✗ Could not find write characteristic for login\n")
+                        raise Exception("No write characteristic found for login")
+                
+                # Now discover all services properly
+                print("Discovering all services and characteristics...\n")
                 for service in client.services:
                     print(f"Service: {service.uuid}")
                     
@@ -372,10 +416,36 @@ class LEDStripDiscovery:
             except ValueError:
                 print("Invalid input")
     
+    async def _execute_login(self, client: BleakClient, device: BLEDevice, char_uuid: str):
+        """Execute login procedure for MELK/MODELX devices"""
+        if device.name and (device.name.lower().startswith("melk") or device.name.lower().startswith("modelx")):
+            try:
+                print("Executing login procedure...")
+                await client.write_gatt_char(char_uuid, bytes([0x7e, 0x07, 0x83]), response=False)
+                await asyncio.sleep(1)
+                await client.write_gatt_char(char_uuid, bytes([0x7e, 0x04, 0x04]), response=False)
+                await asyncio.sleep(1)
+                print("Login completed!\n")
+            except Exception as e:
+                print(f"Login procedure failed: {e}\n")
+    
     async def test_command(self, client: BleakClient, char_uuid: str, command: List[int], 
-                          description: str, ask_user: bool = True) -> bool:
+                          description: str, ask_user: bool = True, turn_on_first: List[int] = None) -> bool:
         """Tests a command on the device"""
         try:
+            # Check if still connected
+            if not client.is_connected:
+                print(f"   [ERROR] Not connected")
+                raise Exception("Client disconnected")
+            
+            # Turn on the strip first if a working turn_on command is provided
+            if turn_on_first is not None:
+                try:
+                    await client.write_gatt_char(char_uuid, bytes(turn_on_first), response=False)
+                    await asyncio.sleep(0.3)  # Wait for the strip to turn on
+                except Exception as e:
+                    print(f"   [WARNING] Could not turn on strip before test: {e}")
+            
             cmd_bytes = bytes(command)
             cmd_hex = ' '.join(f'{b:02x}' for b in cmd_bytes)
             
@@ -383,6 +453,7 @@ class LEDStripDiscovery:
             print(f"   Command: {cmd_hex}")
             
             await client.write_gatt_char(char_uuid, cmd_bytes, response=False)
+            await asyncio.sleep(0.3)  # Wait a bit between commands
             
             if ask_user:
                 while True:
@@ -396,7 +467,12 @@ class LEDStripDiscovery:
                         return False
                     elif response == 'r':
                         print("   [RETRY] Relaunching command...")
-                        await client.write_gatt_char(char_uuid, cmd_bytes, response=False)
+                        if client.is_connected:
+                            await client.write_gatt_char(char_uuid, cmd_bytes, response=False)
+                            await asyncio.sleep(0.3)
+                        else:
+                            print("   [ERROR] Not connected, cannot retry")
+                            return False
                     else:
                         print("   [WARNING] Invalid response (y/n/r)")
             else:
@@ -413,82 +489,166 @@ class LEDStripDiscovery:
         print("TESTING ON/OFF COMMANDS")
         print(f"{'='*60}\n")
         
-        try:
-            async with BleakClient(device.address, timeout=20.0) as client:
-                print(f"Connected to {device.name}\n")
-                
-                # Test known turn on commands
-                print("KNOWN TURN ON COMMANDS:")
-                print("-" * 60)
-                found_turn_on = False
-                for idx, cmd in enumerate(KNOWN_TURN_ON, 1):
-                    if await self.test_command(client, char_uuid, cmd, 
-                                              f"Turn on #{idx} (known)"):
-                        self.test_results['working_commands']['turn_on'].append({
-                            'command': cmd,
-                            'description': f'Known turn on #{idx}',
-                            'type': 'known'
-                        })
-                        found_turn_on = True
-                        print("\n[OK] Working turn on command found, skipping to turn off tests...\n")
-                        break
-                
-                # Test new turn on commands only if not found
-                if not found_turn_on:
-                    print(f"\nNEW TURN ON COMMANDS ({len(NEW_TURN_ON_COMMANDS)} commands):")
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with BleakClient(device.address, timeout=20.0) as client:
+                    print(f"Connected to {device.name}\n")
+                    
+                    # Login for MELK/MODELX devices
+                    await self._execute_login(client, device, char_uuid)
+                    
+                    # STEP 1: Test TURN ON commands
+                    print("STEP 1/3: TESTING TURN ON COMMANDS")
+                    print("=" * 60)
+                    print("KNOWN TURN ON COMMANDS:")
                     print("-" * 60)
-                    for idx, cmd in enumerate(NEW_TURN_ON_COMMANDS, 1):
-                        if await self.test_command(client, char_uuid, cmd, 
-                                                  f"Turn on #{idx} (new)"):
-                            self.test_results['working_commands']['turn_on'].append({
-                                'command': cmd,
-                                'description': f'New turn on #{idx}',
-                                'type': 'new'
-                            })
-                            found_turn_on = True
-                            print("\n[OK] Working turn on command found, skipping to turn off tests...\n")
-                            break
-                
-                # Test known turn off commands
-                print(f"\nKNOWN TURN OFF COMMANDS:")
-                print("-" * 60)
-                found_turn_off = False
-                for idx, cmd in enumerate(KNOWN_TURN_OFF, 1):
-                    if await self.test_command(client, char_uuid, cmd, 
-                                              f"Turn off #{idx} (known)"):
-                        self.test_results['working_commands']['turn_off'].append({
-                            'command': cmd,
-                            'description': f'Known turn off #{idx}',
-                            'type': 'known'
-                        })
-                        found_turn_off = True
-                        print("\n[OK] Working turn off command found, tests completed!\n")
-                        break
-                
-                # Test new turn off commands only if not found
-                if not found_turn_off:
-                    print(f"\nNEW TURN OFF COMMANDS ({len(NEW_TURN_OFF_COMMANDS)} commands):")
-                    print("-" * 60)
-                    for idx, cmd in enumerate(NEW_TURN_OFF_COMMANDS, 1):
-                        if await self.test_command(client, char_uuid, cmd, 
-                                                  f"Turn off #{idx} (new)"):
-                            self.test_results['working_commands']['turn_off'].append({
-                                'command': cmd,
-                                'description': f'New turn off #{idx}',
-                                'type': 'new'
-                            })
-                            found_turn_off = True
-                            print("\n[OK] Working turn off command found, tests completed!\n")
+                    found_turn_on = False
+                    working_turn_on_cmd = None
+                    
+                    for idx, cmd in enumerate(KNOWN_TURN_ON, 1):
+                        if not client.is_connected:
+                            print("\n[WARNING] Connection lost, stopping tests...")
                             break
                         
-        except Exception as e:
-            print(f"\nError during tests: {e}")
+                        if await self.test_command(client, char_uuid, cmd, 
+                                                  f"Turn on #{idx} (known)"):
+                            self.test_results['working_commands']['turn_on'].append({
+                                'command': cmd,
+                                'description': f'Known turn on #{idx}',
+                                'type': 'known'
+                            })
+                            found_turn_on = True
+                            working_turn_on_cmd = cmd
+                            print("\n[OK] Working turn on command found!\n")
+                            break
+                    
+                    # Test new turn on commands only if not found
+                    if not found_turn_on and client.is_connected:
+                        print(f"\nNEW TURN ON COMMANDS ({len(NEW_TURN_ON_COMMANDS)} commands):")
+                        print("-" * 60)
+                        print("Testing new commands, press Ctrl+C to skip if taking too long...\n")
+                        for idx, cmd in enumerate(NEW_TURN_ON_COMMANDS, 1):
+                            if not client.is_connected:
+                                print("\n[WARNING] Connection lost, stopping tests...")
+                                break
+                            
+                            if await self.test_command(client, char_uuid, cmd, 
+                                                      f"Turn on #{idx} (new)"):
+                                self.test_results['working_commands']['turn_on'].append({
+                                    'command': cmd,
+                                    'description': f'New turn on #{idx}',
+                                    'type': 'new'
+                                })
+                                found_turn_on = True
+                                working_turn_on_cmd = cmd
+                                print("\n[OK] Working turn on command found!\n")
+                                break
+                    
+                    if not found_turn_on:
+                        print("\n[WARNING] No working turn on command found, cannot continue tests\n")
+                        return
+                    
+                    if not client.is_connected:
+                        raise Exception("Connection lost during turn on tests")
+                    
+                    # Wait a bit before turn off tests
+                    await asyncio.sleep(1)
+                    
+                    # STEP 2: Test TURN OFF commands
+                    print("\nSTEP 2/3: TESTING TURN OFF COMMANDS")
+                    print("=" * 60)
+                    print("KNOWN TURN OFF COMMANDS:")
+                    print("-" * 60)
+                    found_turn_off = False
+                    working_turn_off_cmd = None
+                    
+                    for idx, cmd in enumerate(KNOWN_TURN_OFF, 1):
+                        if not client.is_connected:
+                            print("\n[WARNING] Connection lost, stopping tests...")
+                            break
+                        
+                        if await self.test_command(client, char_uuid, cmd, 
+                                                  f"Turn off #{idx} (known)"):
+                            self.test_results['working_commands']['turn_off'].append({
+                                'command': cmd,
+                                'description': f'Known turn off #{idx}',
+                                'type': 'known'
+                            })
+                            found_turn_off = True
+                            working_turn_off_cmd = cmd
+                            print("\n[OK] Working turn off command found!\n")
+                            break
+                    
+                    # Test new turn off commands only if not found
+                    if not found_turn_off and client.is_connected:
+                        print(f"\nNEW TURN OFF COMMANDS ({len(NEW_TURN_OFF_COMMANDS)} commands):")
+                        print("-" * 60)
+                        print("Testing new commands, press Ctrl+C to skip if taking too long...\n")
+                        for idx, cmd in enumerate(NEW_TURN_OFF_COMMANDS, 1):
+                            if not client.is_connected:
+                                print("\n[WARNING] Connection lost, stopping tests...")
+                                break
+                            
+                            if await self.test_command(client, char_uuid, cmd, 
+                                                      f"Turn off #{idx} (new)"):
+                                self.test_results['working_commands']['turn_off'].append({
+                                    'command': cmd,
+                                    'description': f'New turn off #{idx}',
+                                    'type': 'new'
+                                })
+                                found_turn_off = True
+                                working_turn_off_cmd = cmd
+                                print("\n[OK] Working turn off command found!\n")
+                                break
+                    
+                    if not found_turn_off:
+                        print("\n[WARNING] No working turn off command found\n")
+                    
+                    # STEP 3: Turn ON again to leave the strip ready for other tests
+                    if found_turn_on and client.is_connected:
+                        await asyncio.sleep(1)
+                        print("\nSTEP 3/3: TURNING ON AGAIN FOR NEXT TESTS")
+                        print("=" * 60)
+                        try:
+                            cmd_hex = ' '.join(f'{b:02x}' for b in working_turn_on_cmd)
+                            print(f"Sending turn on command: {cmd_hex}")
+                            await client.write_gatt_char(char_uuid, bytes(working_turn_on_cmd), response=False)
+                            await asyncio.sleep(0.5)
+                            print("[OK] Strip is now ON and ready for color/white tests\n")
+                        except Exception as e:
+                            print(f"[WARNING] Could not turn on strip: {e}\n")
+                    
+                    print(f"\n{'='*60}")
+                    print("POWER COMMAND TESTS COMPLETED")
+                    print(f"{'='*60}\n")
+                    
+                    # If we got here, tests completed successfully
+                    return
+                    
+            except KeyboardInterrupt:
+                print("\n\n[INFO] Tests skipped by user")
+                raise
+            except Exception as e:
+                print(f"\nConnection error (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    print("Retrying in 2 seconds...")
+                    await asyncio.sleep(2)
+                else:
+                    print("\nMax retries reached, giving up on power command tests")
+                    return
     
     async def test_color_commands(self, device: BLEDevice, char_uuid: str):
         """Tests RGB color commands"""
         print(f"\n{'='*60}")
         print("TESTING RGB COLOR COMMANDS")
         print(f"{'='*60}\n")
+        
+        # Get working turn on command from previous tests
+        turn_on_cmd = None
+        if self.test_results['working_commands']['turn_on']:
+            turn_on_cmd = self.test_results['working_commands']['turn_on'][0]['command']
+            print(f"[INFO] Will turn on strip before each test using: {' '.join(f'{b:02x}' for b in turn_on_cmd)}\n")
         
         # Test colors
         test_colors = [
@@ -501,30 +661,40 @@ class LEDStripDiscovery:
             async with BleakClient(device.address, timeout=20.0) as client:
                 print(f"Connected to {device.name}\n")
                 
+                # Login for MELK/MODELX devices
+                await self._execute_login(client, device, char_uuid)
+                
                 found_color = False
                 for idx, cmd_func in enumerate(NEW_COLOR_COMMANDS, 1):
                     if found_color:
                         break
                     
                     print(f"\nTesting color command #{idx}:")
-                    worked = False
+                    print("Testing all 3 colors (Red, Green, Blue)...\n")
+                    
+                    colors_worked = 0
                     
                     for r, g, b, color_name in test_colors:
                         cmd = cmd_func(r, g, b)
                         if await self.test_command(client, char_uuid, cmd, 
-                                                  f"Color {color_name} (R:{r}, G:{g}, B:{b})"):
-                            worked = True
-                            break
+                                                  f"Color {color_name} (R:{r}, G:{g}, B:{b})", turn_on_first=turn_on_cmd):
+                            colors_worked += 1
                     
-                    if worked:
+                    # If at least 2 out of 3 colors worked, consider it a success
+                    if colors_worked >= 2:
                         self.test_results['working_commands']['color'].append({
                             'command_template': 'lambda r, g, b: ' + str([hex(x) if isinstance(x, int) else 'r' if x == test_colors[0][0] else 'g' if x == test_colors[0][1] else 'b' for x in cmd_func(0, 0, 0)]),
                             'description': f'Color command #{idx}',
-                            'test_values': test_colors
+                            'test_values': test_colors,
+                            'colors_confirmed': colors_worked
                         })
                         found_color = True
-                        print("\n[OK] Working color command found, tests completed!\n")
+                        print(f"\n[OK] Working color command found ({colors_worked}/3 colors confirmed), tests completed!\n")
                         break
+                    elif colors_worked > 0:
+                        print(f"\n[WARNING] Only {colors_worked}/3 colors worked, trying next command template...\n")
+                    else:
+                        print("\n[FAIL] No colors worked with this command template\n")
                         
         except Exception as e:
             print(f"\nError during tests: {e}")
@@ -535,45 +705,75 @@ class LEDStripDiscovery:
         print("TESTING WHITE LIGHT COMMANDS")
         print(f"{'='*60}\n")
         
-        try:
-            async with BleakClient(device.address, timeout=20.0) as client:
-                print(f"Connected to {device.name}\n")
-                
-                # Test known commands
-                print("KNOWN WHITE COMMANDS:")
-                print("-" * 60)
-                found_white = False
-                for idx, cmd in enumerate(KNOWN_WHITE, 1):
-                    if await self.test_command(client, char_uuid, cmd, 
-                                              f"White #{idx} (known)"):
-                        self.test_results['working_commands']['white'].append({
-                            'command': cmd,
-                            'description': f'Known white #{idx}',
-                            'type': 'known'
-                        })
-                        found_white = True
-                        print("\n[OK] Working white command found, tests completed!\n")
-                        break
-                
-                # Test new commands only if not found
-                if not found_white:
-                    print(f"\nNEW WHITE COMMANDS ({len(NEW_WHITE_COMMANDS)} commands):")
+        # Get working turn on command from previous tests
+        turn_on_cmd = None
+        if self.test_results['working_commands']['turn_on']:
+            turn_on_cmd = self.test_results['working_commands']['turn_on'][0]['command']
+            print(f"[INFO] Will turn on strip before each test using: {' '.join(f'{b:02x}' for b in turn_on_cmd)}\n")
+        
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with BleakClient(device.address, timeout=20.0) as client:
+                    print(f"Connected to {device.name}\n")
+                    
+                    # Login for MELK/MODELX devices
+                    await self._execute_login(client, device, char_uuid)
+                    
+                    # Test known commands
+                    print("KNOWN WHITE COMMANDS:")
                     print("-" * 60)
-                    for idx, cmd_func in enumerate(NEW_WHITE_COMMANDS, 1):
-                        cmd = cmd_func(200)  # Test with brightness 200
+                    found_white = False
+                    for idx, cmd in enumerate(KNOWN_WHITE, 1):
+                        if not client.is_connected:
+                            print("\n[WARNING] Connection lost, stopping tests...")
+                            break
+                        
                         if await self.test_command(client, char_uuid, cmd, 
-                                                  f"White #{idx} (brightness: 200)"):
+                                                  f"White #{idx} (known)", turn_on_first=turn_on_cmd):
                             self.test_results['working_commands']['white'].append({
-                                'command_template': f'lambda brightness: {[hex(x) if isinstance(x, int) else "brightness" for x in cmd]}',
-                                'description': f'New white #{idx}',
-                                'type': 'new'
+                                'command': cmd,
+                                'description': f'Known white #{idx}',
+                                'type': 'known'
                             })
                             found_white = True
                             print("\n[OK] Working white command found, tests completed!\n")
                             break
-                        
-        except Exception as e:
-            print(f"\nError during tests: {e}")
+                    
+                    # Test new commands only if not found
+                    if not found_white and client.is_connected:
+                        print(f"\nNEW WHITE COMMANDS ({len(NEW_WHITE_COMMANDS)} commands):")
+                        print("-" * 60)
+                        for idx, cmd_func in enumerate(NEW_WHITE_COMMANDS, 1):
+                            if not client.is_connected:
+                                print("\n[WARNING] Connection lost, stopping tests...")
+                                break
+                            
+                            cmd = cmd_func(200)  # Test with brightness 200
+                            if await self.test_command(client, char_uuid, cmd, 
+                                                      f"White #{idx} (brightness: 200)", turn_on_first=turn_on_cmd):
+                                self.test_results['working_commands']['white'].append({
+                                    'command_template': f'lambda brightness: {[hex(x) if isinstance(x, int) else "brightness" for x in cmd]}',
+                                    'description': f'New white #{idx}',
+                                    'type': 'new'
+                                })
+                                found_white = True
+                                print("\n[OK] Working white command found, tests completed!\n")
+                                break
+                    
+                    return
+                    
+            except KeyboardInterrupt:
+                print("\n\n[INFO] Tests skipped by user")
+                raise
+            except Exception as e:
+                print(f"\nConnection error (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    print("Retrying in 2 seconds...")
+                    await asyncio.sleep(2)
+                else:
+                    print("\nMax retries reached, skipping white command tests")
+                    return
     
     async def test_color_temp_commands(self, device: BLEDevice, char_uuid: str):
         """Tests color temperature commands"""
@@ -581,51 +781,87 @@ class LEDStripDiscovery:
         print("TESTING COLOR TEMPERATURE COMMANDS")
         print(f"{'='*60}\n")
         
-        try:
-            async with BleakClient(device.address, timeout=20.0) as client:
-                print(f"Connected to {device.name}\n")
-                
-                # Test known commands
-                print("KNOWN COLOR TEMP COMMANDS:")
-                print("-" * 60)
-                found_color_temp = False
-                for idx, cmd in enumerate(KNOWN_COLOR_TEMP, 1):
-                    if await self.test_command(client, char_uuid, cmd, 
-                                              f"Color temp #{idx} (known)"):
-                        self.test_results['working_commands']['color_temp'].append({
-                            'command': cmd,
-                            'description': f'Known color temp #{idx}',
-                            'type': 'known'
-                        })
-                        found_color_temp = True
-                        print("\n[OK] Working color temp command found, tests completed!\n")
-                        break
-                
-                # Test new commands only if not found
-                if not found_color_temp:
-                    print(f"\nNEW COLOR TEMP COMMANDS ({len(NEW_COLOR_TEMP_COMMANDS)} commands):")
+        # Get working turn on command from previous tests
+        turn_on_cmd = None
+        if self.test_results['working_commands']['turn_on']:
+            turn_on_cmd = self.test_results['working_commands']['turn_on'][0]['command']
+            print(f"[INFO] Will turn on strip before each test using: {' '.join(f'{b:02x}' for b in turn_on_cmd)}\n")
+        
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with BleakClient(device.address, timeout=20.0) as client:
+                    print(f"Connected to {device.name}\n")
+                    
+                    # Login for MELK/MODELX devices
+                    await self._execute_login(client, device, char_uuid)
+                    
+                    # Test known commands
+                    print("KNOWN COLOR TEMP COMMANDS:")
                     print("-" * 60)
-                    for idx, cmd_func in enumerate(NEW_COLOR_TEMP_COMMANDS, 1):
-                        cmd = cmd_func(50, 50)  # 50% warm, 50% cold
+                    found_color_temp = False
+                    for idx, cmd in enumerate(KNOWN_COLOR_TEMP, 1):
+                        if not client.is_connected:
+                            print("\n[WARNING] Connection lost, stopping tests...")
+                            break
+                        
                         if await self.test_command(client, char_uuid, cmd, 
-                                                  f"Color temp #{idx} (50% warm/cold)"):
+                                                  f"Color temp #{idx} (known)", turn_on_first=turn_on_cmd):
                             self.test_results['working_commands']['color_temp'].append({
-                                'command_template': f'lambda warm, cold: {[hex(x) if isinstance(x, int) else "warm" if x == 50 else "cold" for x in cmd]}',
-                                'description': f'New color temp #{idx}',
-                                'type': 'new'
+                                'command': cmd,
+                                'description': f'Known color temp #{idx}',
+                                'type': 'known'
                             })
                             found_color_temp = True
                             print("\n[OK] Working color temp command found, tests completed!\n")
                             break
-                        
-        except Exception as e:
-            print(f"\nError during tests: {e}")
+                    
+                    # Test new commands only if not found
+                    if not found_color_temp and client.is_connected:
+                        print(f"\nNEW COLOR TEMP COMMANDS ({len(NEW_COLOR_TEMP_COMMANDS)} commands):")
+                        print("-" * 60)
+                        for idx, cmd_func in enumerate(NEW_COLOR_TEMP_COMMANDS, 1):
+                            if not client.is_connected:
+                                print("\n[WARNING] Connection lost, stopping tests...")
+                                break
+                            
+                            cmd = cmd_func(50, 50)  # 50% warm, 50% cold
+                            if await self.test_command(client, char_uuid, cmd, 
+                                                      f"Color temp #{idx} (50% warm/cold)", turn_on_first=turn_on_cmd):
+                                self.test_results['working_commands']['color_temp'].append({
+                                    'command_template': f'lambda warm, cold: {[hex(x) if isinstance(x, int) else "warm" if x == 50 else "cold" for x in cmd]}',
+                                    'description': f'New color temp #{idx}',
+                                    'type': 'new'
+                                })
+                                found_color_temp = True
+                                print("\n[OK] Working color temp command found, tests completed!\n")
+                                break
+                    
+                    return
+                    
+            except KeyboardInterrupt:
+                print("\n\n[INFO] Tests skipped by user")
+                raise
+            except Exception as e:
+                print(f"\nConnection error (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    print("Retrying in 2 seconds...")
+                    await asyncio.sleep(2)
+                else:
+                    print("\nMax retries reached, skipping color temp command tests")
+                    return
     
     async def test_custom_commands(self, device: BLEDevice, char_uuid: str):
         """Allows user to test their own commands"""
         print(f"\n{'='*60}")
         print("CUSTOM COMMAND TESTING")
         print(f"{'='*60}\n")
+        
+        # Get working turn on command from previous tests
+        turn_on_cmd = None
+        if self.test_results['working_commands']['turn_on']:
+            turn_on_cmd = self.test_results['working_commands']['turn_on'][0]['command']
+            print(f"[INFO] Will turn on strip before each test using: {' '.join(f'{b:02x}' for b in turn_on_cmd)}\n")
         
         print("You can test your own commands in hexadecimal format.")
         print("Example: 7e 00 04 f0 00 01 ff 00 ef")
@@ -634,6 +870,9 @@ class LEDStripDiscovery:
         try:
             async with BleakClient(device.address, timeout=20.0) as client:
                 print(f"Connected to {device.name}\n")
+                
+                # Login for MELK/MODELX devices
+                await self._execute_login(client, device, char_uuid)
                 
                 while True:
                     cmd_input = input("Enter command (hex separated by spaces) or 'q': ").strip()
@@ -647,7 +886,7 @@ class LEDStripDiscovery:
                         
                         description = input("   Command description: ").strip()
                         
-                        if await self.test_command(client, char_uuid, cmd, description):
+                        if await self.test_command(client, char_uuid, cmd, description, turn_on_first=turn_on_cmd):
                             self.test_results['custom_commands'].append({
                                 'command': cmd,
                                 'description': description,

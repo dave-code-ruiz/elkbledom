@@ -77,7 +77,7 @@ WHITE_CMD = [[0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x07, 0x05, 0x01, 0xbb, 0xff, 0x02, 0x01],
-                [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
+                [0x7e, 0x07, 0x05, 0x01, 0xbb, 0xff, 0x02, 0x01],
                 [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x01, 0xbb, 0x00, 0x00, 0x00, 0x00, 0xef]]
@@ -763,6 +763,35 @@ class BLEDOMInstance:
 
             LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
             
+            # Execute login command BEFORE resolving characteristics for MELK/MODELX devices
+            # These devices disconnect if login is not performed first
+            if self._device.name.lower().startswith("melk") or self._device.name.lower().startswith("modelx"):
+                LOGGER.debug("%s: Executing login procedure before service discovery; RSSI: %s", self.name, self.rssi)
+                try:
+                    # Get services to find write UUID for login
+                    temp_services = await client.get_services()
+                    temp_write_uuid = None
+                    
+                    # Find write characteristic for login
+                    for characteristic in WRITE_CHARACTERISTIC_UUIDS:
+                        if char := temp_services.get_characteristic(characteristic):
+                            temp_write_uuid = char.uuid
+                            LOGGER.debug("%s: Found write UUID for login: %s", self.name, temp_write_uuid)
+                            break
+                    
+                    if temp_write_uuid:
+                        LOGGER.info("%s: Executing login sequence...", self.name)
+                        await client.write_gatt_char(temp_write_uuid, bytes([0x7e, 0x07, 0x83]), response=False)
+                        await asyncio.sleep(1)
+                        await client.write_gatt_char(temp_write_uuid, bytes([0x7e, 0x04, 0x04]), response=False)
+                        await asyncio.sleep(1)
+                        LOGGER.info("%s: Login sequence completed", self.name)
+                    else:
+                        LOGGER.warning("%s: Could not find write UUID for login procedure", self.name)
+                except Exception as e:
+                    LOGGER.error("%s: Login procedure failed: %s", self.name, e)
+                    # Continue anyway, might work for some devices
+            
             resolved = self._resolve_characteristics(client.services)
             if not resolved:
                 # Try to handle services failing to load
@@ -786,9 +815,6 @@ class BLEDOMInstance:
             self._client = client
             self._reset_disconnect_timer()
 
-            #login commands
-            await self._login_command()
-
             # Enable notifications (simple method, no manual CCCD)
             try:
                 if not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
@@ -801,37 +827,7 @@ class BLEDOMInstance:
             except Exception as e:
                 LOGGER.warning("%s: Notifications could not be enabled: %s", self.name, e)
 
-    async def _login_command(self):
-        try:
-            if self._device.name.lower().startswith("modelx"):
-                LOGGER.debug("Executing login command for: %s; RSSI: %s", self.name, self.rssi)
-                await self._write([0x7e, 0x07, 0x83])
-                await asyncio.sleep(1)
-                await self._write([0x7e, 0x04, 0x04])
-                await asyncio.sleep(1)
-            else:
-                LOGGER.debug("login command for: %s not needed; RSSI: %s", self.name, self.rssi)
 
-        except (Exception) as error:
-            LOGGER.error("Error login command: %s", error)
-            track = traceback.format_exc()
-            LOGGER.debug(track)
-
-    async def _init_command(self):
-        try:
-            if self._device.name.lower().startswith("melk"):
-                LOGGER.debug("Executing init command for: %s; RSSI: %s", self.name, self.rssi)
-                await self._write([0x7e, 0x07, 0x83])
-                await asyncio.sleep(1)
-                await self._write([0x7e, 0x04, 0x04])
-                await asyncio.sleep(1)
-            else:
-                LOGGER.debug("init command for: %s not needed; RSSI: %s", self.name, self.rssi)
-
-        except (Exception) as error:
-            LOGGER.error("Error login command: %s", error)
-            track = traceback.format_exc()
-            LOGGER.debug(track)
 
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
