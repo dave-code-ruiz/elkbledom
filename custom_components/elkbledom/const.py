@@ -4,6 +4,11 @@ DOMAIN = "elkbledom"
 CONF_RESET = "reset"
 CONF_DELAY = "delay"
 
+# Brightness mode configuration
+CONF_BRIGHTNESS_MODE = "brightness_mode"
+BRIGHTNESS_MODES = ["auto", "rgb", "native"]
+DEFAULT_BRIGHTNESS_MODE = "auto"
+
 class EFFECTS (Enum):
     # Light Effects (0x87-0x9C)
     jump_red_green_blue = 0x87

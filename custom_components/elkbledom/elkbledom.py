@@ -110,8 +110,8 @@ COLOR_TEMP_CMD = [[0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef],
                 [0x7e, 0x00, 0x05, 0x02, 0xbb, 0xbb, 0x00, 0x00, 0xef]]
 
 
-MIN_COLOR_TEMPS_K = [2700,2700,2700,2700,2700,2700,2700,2700]
-MAX_COLOR_TEMPS_K = [6500,6500,6500,6500,6500,6500,6500,6500]
+MIN_COLOR_TEMPS_K = [1800,1800,1800,1800,1800,1800,1800,1800]
+MAX_COLOR_TEMPS_K = [7000,7000,7000,7000,7000,7000,7000,7000]
 
 # Query/Status commands to try for different LED strip models
 # Format: [command_bytes, description]
@@ -317,6 +317,10 @@ class BLEDOMInstance:
         self._working_query_cmd = None  # Command that works for this device
         self._query_detection_done = False  # Flag to avoid retesting
         self._notification_received = False  # Flag to detect responses
+        
+        # New: Brightness mode configuration
+        self._brightness_mode = "auto"  # auto, rgb, native
+        
 
         try:
             self._device = async_ble_device_from_address(hass, self._address)
@@ -352,6 +356,16 @@ class BLEDOMInstance:
                 self._model = name
                 return x
             x = x + 1
+    
+    async def apply_brightness_mode(self, mode: str):
+        """Apply new brightness mode and reconnect if needed."""
+        mode = (mode or "auto").lower()
+        if mode not in ("auto", "rgb", "native"):
+            mode = "auto"
+        if mode == self._brightness_mode:
+            return
+        self._brightness_mode = mode
+        LOGGER.info("%s: Brightness mode changed to: %s", self.name, mode)
     
     def get_white_cmd(self, intensity: int):
         white_cmd = self._white_cmd.copy()
@@ -472,13 +486,37 @@ class BLEDOMInstance:
             value = self._min_color_temp_kelvin
         if value > self._max_color_temp_kelvin:
             value = self._max_color_temp_kelvin
-        color_temp_percent = int(((value - self._min_color_temp_kelvin) * 100) / (self._max_color_temp_kelvin - self._min_color_temp_kelvin))
+        
         # Ensure brightness is not None before using it
         if brightness is None:
             brightness = self._brightness if self._brightness is not None else 255
-        brightness_percent = int(brightness * 100 / 255) 
-        color_temp_cmd = self.get_color_temp_cmd(color_temp_percent, brightness_percent)
-        await self._write(color_temp_cmd)
+        self._brightness = brightness
+        
+        if value > 5000:
+            # For high color temperatures, use white mode
+            intensity = max(0, min(int(brightness), 255))
+            percent = int(intensity * 100 / 255)
+            await self.set_white(percent)
+        
+        # Standard RGB-emulation for color temperature
+        color_temp_percent = int(((value - self._min_color_temp_kelvin) * 100) / (self._max_color_temp_kelvin - self._min_color_temp_kelvin))
+        brightness_percent = int(brightness * 100 / 255)
+        
+        # Use RGB emulation for wider color temperature range
+        warm = (255, 138, 18)  # Warm white ~1800K
+        cool = (180, 220, 255)  # Cool white ~7000K
+        t = (value - self._min_color_temp_kelvin) / (self._max_color_temp_kelvin - self._min_color_temp_kelvin) if self._max_color_temp_kelvin > self._min_color_temp_kelvin else 1.0
+        
+        r = int(warm[0] + (cool[0] - warm[0]) * t)
+        g = int(warm[1] + (cool[1] - warm[1]) * t)
+        b = int(warm[2] + (cool[2] - warm[2]) * t)
+        
+        # Apply brightness scaling
+        scale = brightness / 255.0
+        r, g, b = int(r * scale), int(g * scale), int(b * scale)
+        
+        await self.set_color((r, g, b))
+        self._rgb_color = (r, g, b)
 
     @retry_bluetooth_connection_error
     async def set_color(self, rgb: Tuple[int, int, int]):
@@ -496,9 +534,45 @@ class BLEDOMInstance:
 
     @retry_bluetooth_connection_error
     async def set_brightness(self, intensity: int):
-        await self._write([0x7e, 0x04, 0x01, int(intensity*100/255), 0xff, 0x00, 0xff, 0x00, 0xef])
-        self._brightness = intensity
+        """Set brightness with configurable mode (auto/rgb/native)."""
+        self._brightness = max(1, min(int(intensity), 255))
+        percent = round(self._brightness * 100 / 255)
+        mode = (self._brightness_mode or "auto").lower()
+        
+        # Get current RGB color
+        r, g, b = self._rgb_color if self._rgb_color else (255, 255, 255)
+        
+        async def write_rgb_scaled():
+            """Scale RGB values by brightness."""
+            scale = self._brightness / 255.0
+            rr, gg, bb = int(r * scale), int(g * scale), int(b * scale)
+            await self.set_color((rr, gg, bb))
+            LOGGER.debug("%s: Brightness set via RGB scaling: %d%% (RGB: %d,%d,%d)", self.name, percent, rr, gg, bb)
 
+        async def write_native_then_rgb():
+            """Use native brightness command then set color."""
+            await self._write([0x7e, 0x04, 0x01, int(percent), 0xff, 0x00, 0xff, 0x00, 0xef])
+            await asyncio.sleep(0.05)
+            await self.set_color((r, g, b))
+            LOGGER.debug("%s: Brightness set via native command: %d%%", self.name, percent)
+
+        try:
+            if mode == "rgb":
+                # Always use RGB scaling
+                await write_rgb_scaled()
+            elif mode == "native":
+                # Always use native brightness command
+                await write_native_then_rgb()
+            else:  # auto
+                # Try native first, fallback to RGB on error
+                try:
+                    await write_native_then_rgb()
+                except Exception as e:
+                    LOGGER.warning("%s: Native brightness failed, fallback to RGB: %s", self.name, e)
+                    await write_rgb_scaled()
+        except Exception as e:
+            LOGGER.error("%s: Error setting brightness: %s", self.name, e)  
+            
     @retry_bluetooth_connection_error
     async def set_effect_speed(self, value: int):
         effect_speed = self.get_effect_speed_cmd(value)
