@@ -692,6 +692,11 @@ class BLEDOMInstance:
         if char := services.get_characteristic(write_uuid):
             self._write_uuid = char.uuid
             LOGGER.debug("%s: Found write UUID: %s with handle %s", self.name, self._write_uuid, char.handle if hasattr(char, 'handle') else 'Unknown')
+            if self.name == "ELK-BLEDOM" and char.handle if hasattr(char, 'handle') else 'Unknown' == 0x000d:
+                LOGGER.debug("%s: Adjusting model for ELK-BLEDOM specific handle issue 111", self.name)
+                self._model = Model()
+                self._model_name = self._model.detect_model("ELK-BLEDDM")
+
         else:
             LOGGER.error("%s: Could not find write characteristic: %s", self.name, write_uuid)
         
