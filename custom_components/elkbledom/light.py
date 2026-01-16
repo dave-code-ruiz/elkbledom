@@ -195,7 +195,9 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 self._attr_color_mode = ColorMode.WHITE
                 self._attr_effect = None
                 await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250), is_base_color=False)
-                await self._instance.set_white(kwargs[ATTR_WHITE])
+                if ATTR_WHITE in kwargs:
+                    await self._instance.set_white(kwargs[ATTR_WHITE])
+
         
         if ATTR_BRIGHTNESS in kwargs and kwargs[ATTR_BRIGHTNESS] != self.brightness and self.rgb_color != None:
             await self._instance.set_brightness(kwargs[ATTR_BRIGHTNESS])
