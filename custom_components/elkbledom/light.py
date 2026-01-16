@@ -194,7 +194,8 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 LOGGER.debug("Change color to white to reset led strip when other infrared control interact")
                 self._attr_color_mode = ColorMode.WHITE
                 self._attr_effect = None
-                await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250))
+                await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250), is_base_color=False)
+                await self._instance.set_white(kwargs[ATTR_WHITE])
         
         if ATTR_BRIGHTNESS in kwargs and kwargs[ATTR_BRIGHTNESS] != self.brightness and self.rgb_color != None:
             await self._instance.set_brightness(kwargs[ATTR_BRIGHTNESS])
@@ -209,7 +210,7 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         if ATTR_WHITE in kwargs:
             self._attr_color_mode = ColorMode.WHITE
             self._attr_effect = None
-            await self._instance.set_color(self._transform_color_brightness((255, 255, 255), kwargs[ATTR_WHITE]))
+            await self._instance.set_color(self._transform_color_brightness((255, 255, 255), kwargs[ATTR_WHITE]), is_base_color=False)
             await self._instance.set_white(kwargs[ATTR_WHITE])
 
         if ATTR_RGB_COLOR in kwargs:
@@ -217,7 +218,12 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             if kwargs[ATTR_RGB_COLOR] != self.rgb_color:
                 color = kwargs[ATTR_RGB_COLOR]
                 self._attr_effect = None
-                await self._instance.set_color(color)
+                # Save as base color and apply current brightness
+                await self._instance.set_color(color, is_base_color=True)
+                # Apply current brightness to the new color
+                current_brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
+                if current_brightness and current_brightness != 255:
+                    await self._instance.set_brightness(current_brightness)
 
         if ATTR_EFFECT in kwargs and kwargs[ATTR_EFFECT] != self.effect:
             self._attr_effect = kwargs[ATTR_EFFECT]

@@ -324,6 +324,7 @@ class BLEDOMInstance:
         self._expected_disconnect = False
         self._is_on = None
         self._rgb_color = None
+        self._rgb_color_base = (255, 255, 255)  # Base RGB without brightness scaling
         self._brightness = 255
         self._effect = None
         self._effect_speed = 128  # Default medium speed (0-255 range)
@@ -399,6 +400,9 @@ class BLEDOMInstance:
             return
         self._brightness_mode = mode
         LOGGER.info("%s: Brightness mode changed to: %s", self.name, mode)
+
+    def get_color_base(self):
+        return self._rgb_color_base
         
     def get_white_cmd(self, intensity: int):
         white_cmd = self._white_cmd.copy()
@@ -564,19 +568,26 @@ class BLEDOMInstance:
         g = int(warm[1] + (cool[1] - warm[1]) * t)
         b = int(warm[2] + (cool[2] - warm[2]) * t)
         
+        # Save the unscaled color as base color for future brightness adjustments
+        self._rgb_color_base = (r, g, b)
+        
         # Apply brightness scaling
         scale = brightness / 255.0
-        r, g, b = int(r * scale), int(g * scale), int(b * scale)
+        r_scaled, g_scaled, b_scaled = int(r * scale), int(g * scale), int(b * scale)
         
-        await self.set_color((r, g, b))
-        self._rgb_color = (r, g, b)
+        # Send scaled color but mark base color was already saved above
+        await self.set_color((r_scaled, g_scaled, b_scaled), is_base_color=False)
+        # Note: _rgb_color is set in set_color, but _rgb_color_base is preserved
 
     @retry_bluetooth_connection_error
-    async def set_color(self, rgb: Tuple[int, int, int]):
+    async def set_color(self, rgb: Tuple[int, int, int], is_base_color: bool = False):
         r, g, b = rgb
         color_cmd = self.get_color_cmd(r, g, b)
         await self._write(color_cmd)
         self._rgb_color = rgb
+        # If this is a base color (not brightness-scaled), save it
+        if is_base_color:
+            self._rgb_color_base = rgb
 
     @retry_bluetooth_connection_error
     async def set_white(self, intensity: int):
@@ -593,22 +604,24 @@ class BLEDOMInstance:
         percent = round(self._brightness * 100 / 255)
         mode = (self._brightness_mode or "auto").lower()
         
-        # Get current RGB color
-        r, g, b = self._rgb_color if self._rgb_color else (255, 255, 255)
+        # ALWAYS use base RGB color (not already-scaled color) to avoid cumulative scaling
+        r, g, b = self._rgb_color_base
         
         async def write_rgb_scaled():
-            """Scale RGB values by brightness."""
+            """Scale RGB values by brightness from base color."""
             scale = self._brightness / 255.0
             rr, gg, bb = int(r * scale), int(g * scale), int(b * scale)
-            await self.set_color((rr, gg, bb))
-            LOGGER.debug("%s: Brightness set via RGB scaling: %d%% (RGB: %d,%d,%d)", self.name, percent, rr, gg, bb)
+            # Don't save as base color, this is scaled
+            await self.set_color((rr, gg, bb), is_base_color=False)
+            LOGGER.debug("%s: Brightness set via RGB scaling: %d%% (Base RGB: %d,%d,%d -> Scaled: %d,%d,%d)", self.name, percent, r, g, b, rr, gg, bb)
 
         async def write_native_then_rgb():
-            """Use native brightness command then set color."""
+            """Use native brightness command then set base color."""
             brightness_cmd = self.get_brightness_cmd(percent)
             await self._write(brightness_cmd)
             await asyncio.sleep(0.05)
-            await self.set_color((r, g, b))
+            # Use base color, not scaled
+            await self.set_color((r, g, b), is_base_color=False)
             LOGGER.debug("%s: Brightness set via native command: %d%%", self.name, percent)
 
         try:
