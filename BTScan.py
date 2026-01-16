@@ -98,11 +98,87 @@ NEW_TURN_ON_COMMANDS = [
     # Commands found in Banggood LED strips
     [0x7e, 0x00, 0x03, 0xff, 0x00, 0x00, 0x00, 0x00, 0xef],
     [0x7e, 0x04, 0x03, 0xff, 0x00, 0x01, 0xff, 0x00, 0xef],
-    
+
     # Other alternative protocols
     [0xef, 0x01, 0x77],
-    [0xbb, 0x01, 0x00, 0x01],
-    [0x55, 0xaa, 0x01],
+    [0xbb, 0x00, 0x00, 0x01],
+    [0x55, 0xaa, 0x01],       
+]
+
+# Query/Status commands to try for different LED strip models
+# Format: [command_bytes, description]
+QUERY_COMMANDS = [
+    # Standard ELK-BLEDOM commands
+    ([0x7e, 0x00, 0x01, 0xfa, 0x00, 0x00, 0x00, 0x00, 0xef], "Standard status query"),
+    ([0x7e, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Alternative query v1"),
+    ([0x7e, 0x00, 0x81, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Status query 0x81"),
+    ([0x7e, 0x00, 0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Status query 0x82"),
+    ([0x7e, 0x00, 0x83, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Status query 0x83"),
+    
+    # Short format commands
+    ([0xef, 0x01, 0x77], "Short query v1"),
+    ([0x7e, 0x00, 0x10], "Short query v2"),
+    ([0x7e, 0x10], "Minimal query"),
+    ([0x25, 0x00], "Minimal query 2"),
+    ([0x25, 0x02], "Minimal query 3"),
+    
+    # MELK specific commands
+    ([0x7e, 0x04, 0x01, 0x00, 0xff, 0x00, 0xff, 0x00, 0xef], "MELK status query"),
+    ([0x7e, 0x07, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0xef], "MELK query v2"),
+    
+    # Alternative long format
+    ([0x7e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Get all status"),
+    ([0x7e, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Status cmd 0x01"),
+    ([0x7e, 0x04, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0xef], "Power status query"),
+    
+    # LEDBLE specific
+    ([0x7e, 0x00, 0x04, 0xfa, 0x00, 0x00, 0x00, 0x00, 0xef], "LEDBLE status"),
+    ([0xcc, 0x23, 0x33], "LEDBLE short status"),
+    
+    # Other variants found in wild
+    ([0xaa, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55], "Variant header 0xaa"),
+    ([0x7e, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x05"),
+   
+    # Variantes 0x7e con diferentes bytes de comando (0x02-0x0f)
+    ([0x7e, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x02"),
+    ([0x7e, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x03"),
+    ([0x7e, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x06"),
+    ([0x7e, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x07"),
+    ([0x7e, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x08"),
+    ([0x7e, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x09"),
+    ([0x7e, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x0a"),
+    ([0x7e, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x0b"),
+    ([0x7e, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x0c"),
+    ([0x7e, 0x00, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query cmd 0x0d"),
+    
+    # Comandos con segundo byte variable (prefijo alternativo)
+    ([0x7e, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x01"),
+    ([0x7e, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x02"),
+    ([0x7e, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x03"),
+    ([0x7e, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x05"),
+    ([0x7e, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x06"),
+    ([0x7e, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x08"),
+    ([0x7e, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xef], "Query prefix 0x09"),
+    
+    # Comandos cortos con diferentes protocolos
+    ([0xef, 0x01], "Minimal EF query"),
+    ([0xef, 0x77], "EF query 0x77"),
+    ([0xef, 0x00], "EF query 0x00"),
+    ([0x10, 0x00], "Query 0x10 0x00"),
+    ([0x10, 0x01], "Query 0x10 0x01"),
+    ([0xaa, 0x00], "AA protocol query"),
+    ([0xbb, 0x00, 0x00], "BB protocol query"),
+    
+    # Comandos tipo checksum/CRC diferentes
+    ([0x7e, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff], "Query end 0xff"),
+    ([0x7e, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfe], "Query end 0xfe"),
+    ([0x7e, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xee], "Query end 0xee"),
+    
+    # Comandos tipo "ping" o "hello"
+    ([0xff, 0x00, 0x00], "Ping command"),
+    ([0x00, 0x00, 0x00], "Null query"),
+    ([0x01], "Single byte query"),
+    ([0xff], "Single 0xFF query"),
 ]
 
 NEW_TURN_OFF_COMMANDS = [
@@ -198,6 +274,8 @@ NEW_COLOR_TEMP_COMMANDS = [
 
 class LEDStripDiscovery:
     def __init__(self):
+        self.read_uuid: Optional[str] = None
+        self.write_uuid: Optional[str] = None
         self.discovered_devices: List[BLEDevice] = []
         self.test_results = {
             'device_info': {},
@@ -207,7 +285,8 @@ class LEDStripDiscovery:
                 'turn_off': [],
                 'color': [],
                 'white': [],
-                'color_temp': []
+                'color_temp': [],
+                'query': []
             },
             'custom_commands': []
         }
@@ -301,17 +380,27 @@ class LEDStripDiscovery:
                         temp_services = client.services
                     
                     write_char = None
+                    read_char = None
                     
                     for service in temp_services:
                         for char in service.characteristics:
                             if char.uuid in KNOWN_WRITE_UUIDS or 'write' in char.properties or 'write-without-response' in char.properties:
                                 write_char = char.uuid
                                 print(f"Found write characteristic: {write_char}")
+                            if char.uuid in KNOWN_READ_UUIDS:
+                                read_char = char.uuid
+                                print(f"Found read characteristic (used as write): {read_char}")
+                            if read_char and write_char:
                                 break
-                        if write_char:
+                        if read_char and write_char:
                             break
-                    
+                   
+                    if read_char:
+                        self.read_uuid = read_char
+                        print(f"Found read characteristic: {read_char}")
+
                     if write_char:
+                        self.write_uuid = write_char
                         # Execute login sequence
                         print("Executing login commands...")
                         try:
@@ -409,6 +498,55 @@ class LEDStripDiscovery:
                 
                 if 0 <= idx < len(write_chars):
                     selected = write_chars[idx]['uuid']
+                    print(f"\nCharacteristic selected: {selected}")
+                    return selected
+                else:
+                    print("Invalid number")
+            except ValueError:
+                print("Invalid input")
+
+    async def select_read_characteristic(self, characteristics: Dict) -> Optional[str]:
+        """Selects the read characteristic"""
+        print(f"\n{'='*60}")
+        print("READ Characteristic Selection")
+        print(f"{'='*60}\n")
+        
+        # Check if there are known characteristics
+        read_chars = characteristics.get('read', [])
+        
+        if not read_chars:
+            print("No read characteristics found")
+            return None
+        
+        # Search for known characteristics
+        known_found = []
+        for char in read_chars:
+            if char['uuid'] in KNOWN_READ_UUIDS:
+                known_found.append(char)
+        
+        if known_found:
+            print(f"Found {len(known_found)} known characteristics:\n")
+            for char in known_found:
+                print(f"   - {char['uuid']}")
+            
+            if len(known_found) == 1:
+                selected = known_found[0]['uuid']
+                print(f"\nUsing known characteristic: {selected}")
+                return selected
+        
+        # If there are no known ones or there are multiple, show all
+        print(f"\nAvailable read characteristics:\n")
+        for idx, char in enumerate(read_chars, 1):
+            known = "[KNOWN]" if char['uuid'] in KNOWN_READ_UUIDS else ""
+            print(f"{idx}. {char['uuid']} {known}")
+        
+        while True:
+            try:
+                choice = input(f"\nSelect characteristic (1-{len(read_chars)}): ").strip()
+                idx = int(choice) - 1
+                
+                if 0 <= idx < len(read_chars):
+                    selected = read_chars[idx]['uuid']
                     print(f"\nCharacteristic selected: {selected}")
                     return selected
                 else:
@@ -851,6 +989,98 @@ class LEDStripDiscovery:
                     print("\nMax retries reached, skipping color temp command tests")
                     return
     
+    async def test_query_commands(self, device: BLEDevice, char_uuid: str, read_uuid: Optional[str] = None):
+        """Test query/status commands to find which one works"""
+        print(f"\n{'='*60}")
+        print("QUERY/STATUS COMMAND TESTING")
+        print(f"{'='*60}\n")
+        
+        print(f"Testing {len(QUERY_COMMANDS)} query commands...")
+        print("Query commands are used to read the current state of the LED strip.")
+        print("(Note: Many strips don't support queries, this is optional)\n")
+        
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                async with BleakClient(device.address, timeout=20.0) as client:
+                    print(f"Connected to {device.name}\n")
+                    
+                    # Login for MELK/MODELX devices
+                    await self._execute_login(client, device, char_uuid)
+                    
+                    # Enable notifications to detect responses
+                    notification_received = False
+                    
+                    def notification_handler(sender, data):
+                        nonlocal notification_received
+                        notification_received = True
+                        print(f"  ✓ Response received: {' '.join(f'{b:02x}' for b in data)}")
+                    
+                    if read_uuid:
+                        try:
+                            await client.start_notify(read_uuid, notification_handler)
+                            print(f"[INFO] Notifications enabled on {read_uuid}\n")
+                        except Exception as e:
+                            print(f"[WARNING] Could not enable notifications: {e}\n")
+                    
+                    found_query = False
+                    
+                    for idx, (cmd, description) in enumerate(QUERY_COMMANDS, 1):
+                        if not client.is_connected:
+                            print("\n[WARNING] Connection lost, stopping tests...")
+                            break
+                        
+                        notification_received = False
+                        cmd_hex = ' '.join(f'{b:02x}' for b in cmd)
+                        print(f"[{idx}/{len(QUERY_COMMANDS)}] Testing: {description}")
+                        print(f"  Command: {cmd_hex}")
+                        
+                        try:
+                            await client.write_gatt_char(char_uuid, bytes(cmd), response=False)
+                            await asyncio.sleep(0.5)  # Wait for potential response
+                            
+                            if notification_received:
+                                self.test_results['working_commands']['query'] = [{
+                                    'command': cmd,
+                                    'description': description,
+                                    'hex': cmd_hex
+                                }]
+                                found_query = True
+                                print(f"\n[OK] Working query command found: {description}\n")
+                                break
+                            else:
+                                print("  ✗ No response")
+                                
+                        except Exception as e:
+                            print(f"  ✗ Error: {e}")
+                    
+                    if read_uuid:
+                        try:
+                            await client.stop_notify(read_uuid)
+                        except:
+                            pass
+                    
+                    if not found_query:
+                        print("\n[INFO] No working query command found (device may not support status queries)")
+                        print("[INFO] This is normal for many LED strips, they work without query support\n")
+                    
+                    print(f"\n{'='*60}")
+                    print("QUERY COMMAND TESTS COMPLETED")
+                    print(f"{'='*60}\n")
+                    return
+                    
+            except KeyboardInterrupt:
+                print("\n\n[INFO] Tests skipped by user")
+                raise
+            except Exception as e:
+                print(f"\nConnection error (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    print("Retrying in 2 seconds...")
+                    await asyncio.sleep(2)
+                else:
+                    print("\nMax retries reached, skipping query command tests")
+                    return
+
     async def test_custom_commands(self, device: BLEDevice, char_uuid: str):
         """Allows user to test their own commands"""
         print(f"\n{'='*60}")
@@ -993,6 +1223,15 @@ class LEDStripDiscovery:
         else:
             print(f"\nCOLOR TEMPERATURE: No working commands found")
         
+        # Query/Status
+        if working['query']:
+            print(f"\nQUERY/STATUS ({len(working['query'])} commands):")
+            for cmd_info in working['query']:
+                print(f"  - {cmd_info['description']}")
+                print(f"    Command: {cmd_info['hex']}")
+        else:
+            print(f"\nQUERY/STATUS: No working commands found (this is normal)")
+        
         # Custom commands
         if self.test_results['custom_commands']:
             print(f"\nCUSTOM COMMANDS ({len(self.test_results['custom_commands'])} commands):")
@@ -1040,11 +1279,18 @@ async def main():
         # 3. Discover characteristics
         characteristics = await discovery.discover_characteristics(device)
         
-        # 4. Select write characteristic
+        # 4. Select write and read characteristic
         char_uuid = await discovery.select_write_characteristic(characteristics)
         if not char_uuid:
             print("\nCould not select write characteristic")
             return
+        
+        read_uuid = await discovery.select_read_characteristic(characteristics)
+        if not read_uuid:
+            print("\nCould not select read characteristic")
+            return
+        else:
+            discovery.read_uuid = read_uuid
         
         # 5. Test on/off commands
         response = input("\nTest on/off commands? (y/n): ").strip().lower()
@@ -1066,12 +1312,17 @@ async def main():
         if response == 'y':
             await discovery.test_color_commands(device, char_uuid)
         
-        # 9. Custom commands
+        # 9. Test query/status commands
+        response = input("\nTest query/status commands? (y/n): ").strip().lower()
+        if response == 'y':
+            await discovery.test_query_commands(device, char_uuid, discovery.read_uuid)
+        
+        # 10. Custom commands
         response = input("\nTest custom commands? (y/n): ").strip().lower()
         if response == 'y':
             await discovery.test_custom_commands(device, char_uuid)
         
-        # 10. Generate report
+        # 11. Generate report
         response = input("\nShow final report? (y/n): ").strip().lower()
         if response == 'y':
             discovery.generate_report()
