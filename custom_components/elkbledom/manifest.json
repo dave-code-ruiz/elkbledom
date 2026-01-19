@@ -7,6 +7,7 @@
       { "local_name": "XROCKER*" },
       { "local_name": "ELK-BLE*" },
       { "local_name": "ELK-BLEDOB*" },
+      { "local_name": "ELK-BTC*" },
       { "local_name": "MELK*" },
       { "local_name": "LEDBLE*" },
       { "local_name": "ELK-LAMPL*" }
