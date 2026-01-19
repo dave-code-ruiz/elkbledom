@@ -34,16 +34,23 @@ class EFFECTS (Enum):
     blink_white = 0x9c
     blink_red_green_blue_yellow_cyan_magenta_white = 0x95
 
-class MIC_EFFECTS (Enum):
-    # Microphone Effects (0x80-0x87)
-    mic_energic = 0x80
-    mic_rhythm = 0x81
-    mic_spectrum = 0x82
-    mic_rolling = 0x83
-    mic_effect_4 = 0x84
-    mic_effect_5 = 0x85
-    mic_effect_6 = 0x86
-    mic_effect_7 = 0x87
+class EFFECTS_MELK (Enum):
+    Switches_All_Omni = 0x00
+    Soft_Fade_All_R = 0x01
+    Chase_W_CI = 0x4b
+    Chase_All_CO = 0x3a
+    Chase_All_SL = 0x4d
+    Fade_G_R = 0x1c
+    Chase_RWR_L = 0x9b
+    Chase_WBW_L = 0x97
+    Chase_RWR_R = 0x9c
+    Chase_WBW_R = 0x98
+    Fast_Chase_All_R = 0x10
+    Fade_C_L = 0x21
+    Fade_RGB_L = 0x05
+    Fade_All_R = 0x16
+    Fade_R_R = 0x1a
+    Chase_All_R = 0x0a
 
 EFFECTS_list = ['jump_red_green_blue',
     'jump_red_green_blue_yellow_cyan_magenta_white',
@@ -68,6 +75,35 @@ EFFECTS_list = ['jump_red_green_blue',
     'blink_white',
     'blink_red_green_blue_yellow_cyan_magenta_white'
     ]
+
+EFFECTS_list_MELK = ['Switches_All_Omni',
+    'Soft_Fade_All_Red',
+    'Chase_W_CI',
+    'Chase_All_CO',
+    'Chase_All_SL',
+    'Fade_Green_Right',
+    'Chase_Red_White_Red_Left',
+    'Chase_White_Blue_White_Left',
+    'Chase_Red_White_Red_Right',
+    'Chase_White_Blue_White_Right',
+    'Fast_Chase_All_Right',
+    'Fade_Cyan_Left',
+    'Fade_Red_Green_Blue_Left',
+    'Fade_All_Right',
+    'Fade_Red_Right',
+    'Chase_All_Right'
+    ]
+
+class MIC_EFFECTS (Enum):
+    # Microphone Effects (0x80-0x87)
+    mic_energic = 0x80
+    mic_rhythm = 0x81
+    mic_spectrum = 0x82
+    mic_rolling = 0x83
+    mic_effect_4 = 0x84
+    mic_effect_5 = 0x85
+    mic_effect_6 = 0x86
+    mic_effect_7 = 0x87
 
 MIC_EFFECTS_list = [
     'mic_energic',

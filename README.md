@@ -87,7 +87,10 @@ You can scan BT device with BTScan.py in my repository to find info to discover 
 
 Create issue in https://github.com/dave-code-ruiz/elkbledom/issues with results of BTScan.py (BTScan.py create a json file with info i need)
 
-If no command works for you, i can not helps you, you can try to use wireshark or similar software to discover commands to turn on, turn off, ... your strip , if you discover this, you can post new issue with this information.
+If no command works for you, ..
+you can try to use my [sniffing guide](https://github.com/dave-code-ruiz/elkbledom/blob/main/sniffing_ble_device.md) to discover commands to turn on, turn off, ... your strip , 
+if you discover this, you can post new issue with this information.
+
 
 ## Installation
 
