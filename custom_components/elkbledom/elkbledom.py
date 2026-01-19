@@ -146,6 +146,8 @@ class BLEDOMInstance:
         self._model = None
         self._model_name = None
         self._color_temp = None
+        self._read_uuid = None
+        self._write_uuid = None
         
         # New: Brightness mode configuration
         self._brightness_mode = "auto"  # auto, rgb, native
@@ -741,7 +743,7 @@ class BLEDOMInstance:
     async def _execute_disconnect(self) -> None:
         """Execute disconnection."""
         async with self._connect_lock:
-            read_char = self._read_uuid
+            read_char = self._read_uuid if hasattr(self, '_read_uuid') else None
             client = self._client
             LOGGER.debug("Disconnecting: READ_UUID=%s, CLIENT_CONNECTED=%s", read_char, client.is_connected if client else "No Client")
             self._expected_disconnect = True
@@ -750,7 +752,7 @@ class BLEDOMInstance:
             self._read_uuid = None
             if client and client.is_connected:
                 try:
-                    if not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
+                    if read_char and not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
                         await client.stop_notify(read_char)
                     await client.disconnect()
                 except Exception as e:
