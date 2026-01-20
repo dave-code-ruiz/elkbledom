@@ -702,6 +702,12 @@ class BLEDOMInstance:
         else:
             LOGGER.error("%s: Could not find write characteristic: %s", self.name, write_uuid)
         
+        # For devices like MELK that don't use notifications, only write_uuid is required
+        if self._device.name.lower().startswith("melk") or self._device.name.lower().startswith("modelx"):
+            result = bool(self._write_uuid)
+            LOGGER.debug("%s: Device doesn't require read UUID, resolved: %s", self.name, result)
+            return result
+        
         return bool(self._read_uuid and self._write_uuid)
 
     def _reset_disconnect_timer(self) -> None:

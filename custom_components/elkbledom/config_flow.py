@@ -168,9 +168,9 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             if not self._instance:
                 self._instance = BLEDOMInstance(self.mac, False, 120, self.hass)
-            #init commands
-            await self._instance._init_command()
+            # Update to get current state
             await self._instance.update()
+            # Toggle the light to verify connection
             if self._instance.is_on:
                 await self._instance.turn_off()
                 await asyncio.sleep(2)
@@ -181,7 +181,8 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 await self._instance.turn_on()
                 await asyncio.sleep(2)
                 await self._instance.turn_off()
-        except (Exception) as error:
+        except Exception as error:
+            LOGGER.error("Error during light toggle: %s", error)
             return error
         finally:
             if self._instance:
