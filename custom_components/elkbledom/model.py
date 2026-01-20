@@ -6,24 +6,35 @@ from typing import Optional, Dict, List
 
 LOGGER = logging.getLogger(__name__)
 
+# Load models at module import time to avoid blocking I/O in event loop
+_MODELS_CACHE: Dict[str, Dict] = {}
+
+def _load_models_once() -> Dict[str, Dict]:
+    """Load model configuration from JSON file (called once at module import)"""
+    global _MODELS_CACHE
+    if _MODELS_CACHE:
+        return _MODELS_CACHE
+    
+    try:
+        config_path = Path(__file__).parent / "models.json"
+        with open(config_path, 'r') as f:
+            _MODELS_CACHE = json.load(f)
+        LOGGER.debug("Loaded %d models from configuration", len(_MODELS_CACHE))
+    except Exception as e:
+        LOGGER.error("Error loading models configuration: %s", e)
+        _MODELS_CACHE = {}
+    
+    return _MODELS_CACHE
+
+# Load models at module import time
+_load_models_once()
+
 
 class Model:
     """Model configuration manager for LED strips"""
     
     def __init__(self):
-        self._models: Dict[str, Dict] = {}
-        self._load_models()
-    
-    def _load_models(self):
-        """Load model configuration from JSON file"""
-        try:
-            config_path = Path(__file__).parent / "models.json"
-            with open(config_path, 'r') as f:
-                self._models = json.load(f)
-            LOGGER.debug("Loaded %d models from configuration", len(self._models))
-        except Exception as e:
-            LOGGER.error("Error loading models configuration: %s", e)
-            self._models = {}
+        self._models: Dict[str, Dict] = _MODELS_CACHE
     
     @staticmethod
     def get_models() -> List[str]:
