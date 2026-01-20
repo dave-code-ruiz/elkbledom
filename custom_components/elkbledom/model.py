@@ -1,46 +1,31 @@
 """Model configuration manager for LED strips"""
-import json
 import logging
-from pathlib import Path
 from typing import Optional, Dict, List
+from homeassistant.core import HomeAssistant
 
 LOGGER = logging.getLogger(__name__)
 
-# Load models at module import time to avoid blocking I/O in event loop
-_MODELS_CACHE: Dict[str, Dict] = {}
+# Models data key - must match __init__.py
+MODELS_DATA_KEY = "elkbledom_models"
 
-def _load_models_once() -> Dict[str, Dict]:
-    """Load model configuration from JSON file (called once at module import)"""
-    global _MODELS_CACHE
-    if _MODELS_CACHE:
-        return _MODELS_CACHE
-    
-    try:
-        config_path = Path(__file__).parent / "models.json"
-        with open(config_path, 'r') as f:
-            _MODELS_CACHE = json.load(f)
-        LOGGER.debug("Loaded %d models from configuration", len(_MODELS_CACHE))
-    except Exception as e:
-        LOGGER.error("Error loading models configuration: %s", e)
-        _MODELS_CACHE = {}
-    
-    return _MODELS_CACHE
-
-# Load models at module import time
-_load_models_once()
+def get_models_data(hass: HomeAssistant) -> Dict[str, Dict]:
+    """Get models data from hass.data (loaded asynchronously in __init__.py)."""
+    return hass.data.get(MODELS_DATA_KEY, {})
 
 
 class Model:
     """Model configuration manager for LED strips"""
     
-    def __init__(self):
-        self._models: Dict[str, Dict] = _MODELS_CACHE
+    def __init__(self, hass: Optional[HomeAssistant] = None):
+        """Initialize Model with optional hass instance for data access."""
+        self._hass = hass
+        self._models: Dict[str, Dict] = {}
+        if hass is not None:
+            self._models = get_models_data(hass)
     
-    @staticmethod
-    def get_models() -> List[str]:
+    def get_models(self) -> List[str]:
         """Get list of all supported model names"""
-        instance = Model()
-        return list(instance._models.keys())
+        return list(self._models.keys())
     
     def detect_model(self, device_name: str) -> Optional[str]:
         """Detect model from device name"""

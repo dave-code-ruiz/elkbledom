@@ -76,7 +76,7 @@ class CharacteristicMissingError(Exception):
 class DeviceData():
     def __init__(self, hass, discovery_info):
         self._discovery = discovery_info
-        model_manager = Model()
+        model_manager = Model(hass)
         self._supported = model_manager.detect_model(self._discovery.name or "") is not None
         self._address = self._discovery.address
         self._name = self._discovery.name
@@ -178,7 +178,7 @@ class BLEDOMInstance:
         
     def _detect_model(self):
         """Detect the model using Model manager"""
-        self._model = Model()
+        self._model = Model(self._hass)
         self._model_name = self._model.detect_model(self._device.name or "")
         if not self._model_name:
             LOGGER.warning("Unknown model for device %s", self._device.name)
