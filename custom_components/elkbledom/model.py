@@ -1,35 +1,31 @@
 """Model configuration manager for LED strips"""
-import json
 import logging
-from pathlib import Path
 from typing import Optional, Dict, List
+from homeassistant.core import HomeAssistant
 
 LOGGER = logging.getLogger(__name__)
+
+# Models data key - must match __init__.py
+MODELS_DATA_KEY = "elkbledom_models"
+
+def get_models_data(hass: HomeAssistant) -> Dict[str, Dict]:
+    """Get models data from hass.data (loaded asynchronously in __init__.py)."""
+    return hass.data.get(MODELS_DATA_KEY, {})
 
 
 class Model:
     """Model configuration manager for LED strips"""
     
-    def __init__(self):
+    def __init__(self, hass: Optional[HomeAssistant] = None):
+        """Initialize Model with optional hass instance for data access."""
+        self._hass = hass
         self._models: Dict[str, Dict] = {}
-        self._load_models()
+        if hass is not None:
+            self._models = get_models_data(hass)
     
-    def _load_models(self):
-        """Load model configuration from JSON file"""
-        try:
-            config_path = Path(__file__).parent / "models.json"
-            with open(config_path, 'r') as f:
-                self._models = json.load(f)
-            LOGGER.debug("Loaded %d models from configuration", len(self._models))
-        except Exception as e:
-            LOGGER.error("Error loading models configuration: %s", e)
-            self._models = {}
-    
-    @staticmethod
-    def get_models() -> List[str]:
+    def get_models(self) -> List[str]:
         """Get list of all supported model names"""
-        instance = Model()
-        return list(instance._models.keys())
+        return list(self._models.keys())
     
     def detect_model(self, device_name: str) -> Optional[str]:
         """Detect model from device name"""
