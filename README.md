@@ -15,6 +15,8 @@ New support for MELK strip, you can buy it in amazon spain (https://www.amazon.e
 
 New support for ELK-LAMPL strip, works with Lotus Lamp X.
 
+New support for ELK-BULB* strip, XROCKER*, ELK-DOB* and ELK-BTC*
+
 ## Dependencies
 
 `gattool` is used to query the BLE device.
