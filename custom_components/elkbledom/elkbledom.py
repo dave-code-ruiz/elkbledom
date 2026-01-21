@@ -583,7 +583,16 @@ class BLEDOMInstance:
                 LOGGER.debug("%s: Executing login procedure before service discovery; RSSI: %s", self.name, self.rssi)
                 try:
                     # Get services to find write UUID for login
-                    temp_services = await client.get_services()
+                    temp_services = None
+                    try:
+                        temp_services = client.services
+                    except (AttributeError, Exception):
+                        try:
+                            temp_services = await client.get_services()
+                        except (AttributeError, Exception) as e:
+                            LOGGER.error("%s: Failed to get services: %s", self.name, e)
+                            raise
+                    
                     temp_write_uuid = None
                     
                     # Find write characteristic for login
@@ -605,17 +614,40 @@ class BLEDOMInstance:
                     LOGGER.error("%s: Login procedure failed: %s", self.name, e)
                     # Continue anyway, might work for some devices
             
-            resolved = self._resolve_characteristics(client.services)
+            # Try to get services with fallback
+            services_obj = None
+            try:
+                services_obj = client.services
+            except (AttributeError, Exception):
+                try:
+                    services_obj = await client.get_services()
+                except (AttributeError, Exception) as e:
+                    LOGGER.error("%s: Failed to get services: %s", self.name, e)
+                    await client.disconnect()
+                    raise
+            
+            resolved = self._resolve_characteristics(services_obj)
             if not resolved:
                 # Try to handle services failing to load
-                try:    
-                    services = await client.get_services()
-                    resolved = self._resolve_characteristics(services)
-                    self._cached_services = services if resolved else None
-                except (AttributeError) as error:
+                try:
+                    # Try alternate method
+                    alt_services = None
+                    try:
+                        alt_services = await client.get_services()
+                    except (AttributeError, Exception):
+                        try:
+                            alt_services = client.services
+                        except (AttributeError, Exception) as e:
+                            LOGGER.warning("%s: Could not get services with either method: %s", self.name, e)
+                            raise
+                    
+                    if alt_services:
+                        resolved = self._resolve_characteristics(alt_services)
+                        self._cached_services = alt_services if resolved else None
+                except (AttributeError, Exception) as error:
                     LOGGER.warning("%s: Could not resolve characteristics from services; RSSI: %s", self.name, self.rssi)
             else:
-                self._cached_services = client.services if resolved else None
+                self._cached_services = services_obj if resolved else None
             
             if not resolved:
                 await client.clear_cache()
