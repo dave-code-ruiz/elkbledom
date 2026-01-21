@@ -120,12 +120,13 @@ class DeviceData():
         LOGGER.debug("Parsing Govee BLE advertisement data: %s", service_info)
 
 class BLEDOMInstance:
-    def __init__(self, address, reset: bool, delay: int, hass) -> None:
+    def __init__(self, address, reset: bool, delay: int, hass, forced_model: str = None) -> None:
         self.loop = asyncio.get_running_loop()
         self._address = address
         self._reset = reset
         self._delay = delay
         self._hass = hass
+        self._forced_model = forced_model
         self._device: BLEDevice | None = None
         self._device_data: DeviceData | None = None
         self._connect_lock: asyncio.Lock = asyncio.Lock()
@@ -179,7 +180,15 @@ class BLEDOMInstance:
     def _detect_model(self):
         """Detect the model using Model manager"""
         self._model = Model(self._hass)
-        self._model_name = self._model.detect_model(self._device.name or "")
+        
+        # Use forced model if provided, otherwise auto-detect
+        if self._forced_model:
+            self._model_name = self._forced_model
+            LOGGER.info("%s: Using forced model: %s", self._device.name, self._model_name)
+        else:
+            self._model_name = self._model.detect_model(self._device.name or "")
+            LOGGER.debug("%s: Auto-detected model: %s", self._device.name, self._model_name)
+        
         if not self._model_name:
             LOGGER.warning("Unknown model for device %s", self._device.name)
             self._model_name = "ELK-BLEDOM"  # Default fallback
@@ -579,8 +588,8 @@ class BLEDOMInstance:
                     
                     # Find write characteristic for login
                     write_uuid = self._model.get_write_uuid(self._model_name)
-                    if char := temp_services.get_characteristic(write_uuid):
-                        temp_write_uuid = char.uuid
+                    if write_uuid and (char := temp_services.get_characteristic(write_uuid)):
+                        temp_write_uuid = str(char.uuid)  # Ensure it's a string
                         LOGGER.debug("%s: Found write UUID for login: %s", self.name, temp_write_uuid)
                     
                     if temp_write_uuid:
@@ -600,8 +609,9 @@ class BLEDOMInstance:
             if not resolved:
                 # Try to handle services failing to load
                 try:    
-                    resolved = self._resolve_characteristics(await client.get_services())
-                    self._cached_services = client.get_services() if resolved else None
+                    services = await client.get_services()
+                    resolved = self._resolve_characteristics(services)
+                    self._cached_services = services if resolved else None
                 except (AttributeError) as error:
                     LOGGER.warning("%s: Could not resolve characteristics from services; RSSI: %s", self.name, self.rssi)
             else:
@@ -622,7 +632,7 @@ class BLEDOMInstance:
             # Enable notifications (simple method, no manual CCCD)
             try:
                 if not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
-                    if self._read_uuid is not None and self._read_uuid != "None":
+                    if self._read_uuid is not None and isinstance(self._read_uuid, str) and self._read_uuid.lower() != "none":
                         LOGGER.debug("%s: Enabling notifications; RSSI: %s", self.name, self.rssi)
                         await client.start_notify(self._read_uuid, self._notification_handler)
                         LOGGER.info("%s: Notifications enabled", self.name)
@@ -683,23 +693,24 @@ class BLEDOMInstance:
         
         # Try to find read characteristic
         read_uuid = self._model.get_read_uuid(self._model_name)
-        if char := services.get_characteristic(read_uuid):
-            self._read_uuid = char.uuid
+        if read_uuid and (char := services.get_characteristic(read_uuid)):
+            self._read_uuid = str(char.uuid)  # Ensure it's a string
             LOGGER.debug("%s: Found read UUID: %s with handle %s", self.name, self._read_uuid, char.handle if hasattr(char, 'handle') else 'Unknown')
         else:
+            self._read_uuid = None
             LOGGER.warning("%s: Could not find read characteristic: %s", self.name, read_uuid)
         
         # Try to find write characteristic
         write_uuid = self._model.get_write_uuid(self._model_name)
-        if char := services.get_characteristic(write_uuid):
-            self._write_uuid = char.uuid
+        if write_uuid and (char := services.get_characteristic(write_uuid)):
+            self._write_uuid = str(char.uuid)  # Ensure it's a string
             LOGGER.debug("%s: Found write UUID: %s with handle %s", self.name, self._write_uuid, char.handle if hasattr(char, 'handle') else 'Unknown')
-            if self.name == "ELK-BLEDOM" and char.handle if hasattr(char, 'handle') else 'Unknown' == 0x000d:
+            if self.name == "ELK-BLEDOM" and hasattr(char, 'handle') and char.handle == 0x000d:
                 LOGGER.debug("%s: Adjusting model for ELK-BLEDOM specific handle issue 111", self.name)
-                self._model = Model()
+                self._model = Model(self._hass)
                 self._model_name = self._model.detect_model("ELK-BLEDDM")
-
         else:
+            self._write_uuid = None
             LOGGER.error("%s: Could not find write characteristic: %s", self.name, write_uuid)
         
         # For devices like MELK that don't use notifications, only write_uuid is required

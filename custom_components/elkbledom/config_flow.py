@@ -1,6 +1,7 @@
 import asyncio
 from .elkbledom import BLEDOMInstance
 from .elkbledom import DeviceData
+from .model import Model
 from typing import Any
 
 from homeassistant import config_entries
@@ -14,7 +15,7 @@ from homeassistant.components.bluetooth import (
     async_discovered_service_info,
 )
 
-from .const import DOMAIN, CONF_RESET, CONF_DELAY
+from .const import DOMAIN, CONF_RESET, CONF_DELAY, CONF_MODEL
 import logging
 
 LOGGER = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._device = None
         self._instance = None
         self.name = None
+        self._model_name = None
         self._discovery_info: BluetoothServiceInfoBleak | None = None
         self._discovered_devices = []
 
@@ -52,18 +54,23 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self, discovery_info: BluetoothServiceInfoBleak
     ) -> FlowResult:
         LOGGER.debug("Discovered device: address=%s, name=%s", discovery_info.address, discovery_info.name)
-        if not discovery_info.address or not discovery_info.name:
-            LOGGER.error("Invalid discovery info: %s", discovery_info)
+        if not discovery_info.address:
+            LOGGER.error("Invalid discovery info (no address): %s", discovery_info)
             return self.async_abort(reason="invalid_discovery_info")
+        
+        if not discovery_info.name:
+            LOGGER.warning("Device discovered without name: %s, aborting discovery", discovery_info.address)
+            return self.async_abort(reason="no_device_name")
 
         await self.async_set_unique_id(discovery_info.address)
         self._abort_if_unique_id_configured()
         device = DeviceData(self.hass, discovery_info)
+        LOGGER.info("Device %s (%s) - Supported: %s", discovery_info.name, discovery_info.address, device.is_supported)
         if device.is_supported:
             self._discovered_devices.append(device)
             return await self.async_step_bluetooth_confirm()
         else:
-            LOGGER.debug("Device not supported: %s", discovery_info.name)
+            LOGGER.info("Device not supported for auto-discovery: %s", discovery_info.name)
             return self.async_abort(reason="not_supported")
 
 
@@ -85,6 +92,10 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_manual()
             self.mac = user_input[CONF_MAC]
             self.name = user_input["name"]
+            # Auto-detect model from device name
+            model_manager = Model(self.hass)
+            self._model_name = model_manager.detect_model(self.name or "")
+            LOGGER.debug("Auto-detected model: %s for device: %s", self._model_name, self.name)
             result = await self.async_set_unique_id(self.mac, raise_on_progress=False)
             if result is not None:
                 return self.async_abort(reason="already_in_progress")
@@ -126,7 +137,10 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             if "flicker" in user_input:
                 if user_input["flicker"]:
-                    return self.async_create_entry(title=self.name, data={CONF_MAC: self.mac, "name": self.name})
+                    entry_data = {CONF_MAC: self.mac, "name": self.name}
+                    if self._model_name:
+                        entry_data[CONF_MODEL] = self._model_name
+                    return self.async_create_entry(title=self.name, data=entry_data)
                 return self.async_abort(reason="cannot_validate")
             
             if "retry" in user_input and not user_input["retry"]:
@@ -153,21 +167,29 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:            
             self.mac = user_input[CONF_MAC]
             self.name = user_input["name"]
+            self._model_name = user_input.get(CONF_MODEL)
+            LOGGER.debug("Manual setup - MAC: %s, Name: %s, Model: %s", self.mac, self.name, self._model_name)
             await self.async_set_unique_id(format_mac(self.mac))
             return await self.async_step_validate()
 
+        # Get available models
+        model_manager = Model(self.hass)
+        available_models = model_manager.get_models()
+        models_dict = {model: model for model in available_models}
+        
         return self.async_show_form(
             step_id="manual", data_schema=vol.Schema(
                 {
                     vol.Required(CONF_MAC): str,
-                    vol.Required("name"): str
+                    vol.Required("name"): str,
+                    vol.Required(CONF_MODEL): vol.In(models_dict)
                 }
             ), errors={})
 
     async def toggle_light(self):
         try:
             if not self._instance:
-                self._instance = BLEDOMInstance(self.mac, False, 120, self.hass)
+                self._instance = BLEDOMInstance(self.mac, False, 120, self.hass, self._model_name)
             # Update to get current state
             await self._instance.update()
             # Toggle the light to verify connection
@@ -206,16 +228,34 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
         errors = {}
-        options = self.config_entry.options or {CONF_RESET: False,CONF_DELAY: 120,}
+        options = self.config_entry.options or {CONF_RESET: False, CONF_DELAY: 120}
+        current_model = self.config_entry.options.get(CONF_MODEL) or self.config_entry.data.get(CONF_MODEL)
+        
         if user_input is not None:
-            return self.async_create_entry(title="", data={CONF_RESET: user_input[CONF_RESET], CONF_DELAY: user_input[CONF_DELAY]})
+            new_options = {
+                CONF_RESET: user_input[CONF_RESET],
+                CONF_DELAY: user_input[CONF_DELAY]
+            }
+            if CONF_MODEL in user_input:
+                new_options[CONF_MODEL] = user_input[CONF_MODEL]
+            return self.async_create_entry(title="", data=new_options)
 
+        # Get available models
+        model_manager = Model(self.hass)
+        available_models = model_manager.get_models()
+        models_dict = {model: model for model in available_models}
+        
+        schema_dict = {
+            vol.Optional(CONF_RESET, default=options.get(CONF_RESET)): bool,
+            vol.Optional(CONF_DELAY, default=options.get(CONF_DELAY)): int,
+        }
+        
+        # Add model selector if models are available
+        if models_dict:
+            schema_dict[vol.Optional(CONF_MODEL, default=current_model)] = vol.In(models_dict)
+        
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(CONF_RESET, default=options.get(CONF_RESET)): bool,
-                    vol.Optional(CONF_DELAY, default=options.get(CONF_DELAY)): int,
-                }
-            ), errors=errors
+            data_schema=vol.Schema(schema_dict),
+            errors=errors
         )

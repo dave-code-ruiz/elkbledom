@@ -3,6 +3,7 @@ from enum import Enum
 DOMAIN = "elkbledom"
 CONF_RESET = "reset"
 CONF_DELAY = "delay"
+CONF_MODEL = "model"
 
 # Brightness mode configuration
 CONF_BRIGHTNESS_MODE = "brightness_mode"
