@@ -1,5 +1,7 @@
 """Model configuration manager for LED strips"""
+import json
 import logging
+from pathlib import Path
 from typing import Optional, Dict, List
 from homeassistant.core import HomeAssistant
 
@@ -7,6 +9,34 @@ LOGGER = logging.getLogger(__name__)
 
 # Models data key - must match __init__.py
 MODELS_DATA_KEY = "elkbledom_models"
+
+async def ensure_models_loaded(hass: HomeAssistant) -> Dict[str, Dict]:
+    """Ensure models are loaded in hass.data, loading them if necessary."""
+    if MODELS_DATA_KEY in hass.data:
+        return hass.data[MODELS_DATA_KEY]
+    
+    # Need to load models
+    models_file = Path(__file__).parent / "models.json"
+    
+    def _load_json():
+        try:
+            if not models_file.exists():
+                LOGGER.error("models.json file not found at: %s", models_file)
+                return {}
+            
+            content = models_file.read_text(encoding="utf-8")
+            models = json.loads(content)
+            LOGGER.debug("Loaded %d models from models.json", len(models))
+            return models
+        except json.JSONDecodeError as e:
+            LOGGER.error("Error decoding models.json: %s", e)
+            return {}
+        except Exception as e:
+            LOGGER.error("Error loading models.json from %s: %s", models_file, e)
+            return {}
+    
+    hass.data[MODELS_DATA_KEY] = await hass.async_add_executor_job(_load_json)
+    return hass.data[MODELS_DATA_KEY]
 
 def get_models_data(hass: HomeAssistant) -> Dict[str, Dict]:
     """Get models data from hass.data (loaded asynchronously in __init__.py)."""
@@ -30,7 +60,9 @@ class Model:
     def detect_model(self, device_name: str) -> Optional[str]:
         """Detect model from device name"""
         device_name_lower = device_name.lower()
-        for model_name in self._models.keys():
+        # Sort model names by length (longest first) to match most specific models first
+        sorted_models = sorted(self._models.keys(), key=len, reverse=True)
+        for model_name in sorted_models:
             if device_name_lower.startswith(model_name.lower()):
                 return model_name
         return None

@@ -1,7 +1,7 @@
 import asyncio
 from .elkbledom import BLEDOMInstance
 from .elkbledom import DeviceData
-from .model import Model
+from .model import Model, ensure_models_loaded
 from typing import Any
 
 from homeassistant import config_entries
@@ -92,10 +92,14 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_manual()
             self.mac = user_input[CONF_MAC]
             self.name = user_input["name"]
+            # Ensure models are loaded before auto-detect
+            await ensure_models_loaded(self.hass)
             # Auto-detect model from device name
             model_manager = Model(self.hass)
+            available_models_count = len(model_manager.get_models())
+            LOGGER.debug("Available models in manager: %d", available_models_count)
             self._model_name = model_manager.detect_model(self.name or "")
-            LOGGER.debug("Auto-detected model: %s for device: %s", self._model_name, self.name)
+            LOGGER.debug("Auto-detected model: %s for device: %s (from %d available models)", self._model_name, self.name, available_models_count)
             result = await self.async_set_unique_id(self.mac, raise_on_progress=False)
             if result is not None:
                 return self.async_abort(reason="already_in_progress")
@@ -113,10 +117,12 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 LOGGER.debug("Device with address %s in discovered_devices, discarting duplicates", self.mac)
                 continue
             device = DeviceData(self.hass, discovery_info)
+            LOGGER.debug("Checking device %s (%s) - Supported: %s", discovery_info.name, discovery_info.address, device.is_supported)
             if device.is_supported:
                 self._discovered_devices.append(device)
         
         if not self._discovered_devices:
+            LOGGER.debug("No supported devices discovered, showing manual setup")
             return await self.async_step_manual()
 
         for device in self._discovered_devices:
@@ -172,10 +178,16 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(format_mac(self.mac))
             return await self.async_step_validate()
 
+        # Ensure models are loaded
+        await ensure_models_loaded(self.hass)
         # Get available models
         model_manager = Model(self.hass)
         available_models = model_manager.get_models()
+        LOGGER.debug("Manual setup - Available models: %d - %s", len(available_models), available_models)
         models_dict = {model: model for model in available_models}
+        
+        if not models_dict:
+            LOGGER.error("No models available in manual setup! Check if models.json is loaded.")
         
         return self.async_show_form(
             step_id="manual", data_schema=vol.Schema(
@@ -240,6 +252,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 new_options[CONF_MODEL] = user_input[CONF_MODEL]
             return self.async_create_entry(title="", data=new_options)
 
+        # Ensure models are loaded
+        await ensure_models_loaded(self.hass)
         # Get available models
         model_manager = Model(self.hass)
         available_models = model_manager.get_models()

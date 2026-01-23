@@ -77,7 +77,13 @@ class DeviceData():
     def __init__(self, hass, discovery_info):
         self._discovery = discovery_info
         model_manager = Model(hass)
-        self._supported = model_manager.detect_model(self._discovery.name or "") is not None
+        available_models = model_manager.get_models()
+        LOGGER.debug("DeviceData init - Available models: %d", len(available_models))
+        detected_model = model_manager.detect_model(self._discovery.name or "")
+        self._supported = detected_model is not None
+        if self._discovery.name:
+            LOGGER.debug("DeviceData - Device: %s, Detected model: %s, Supported: %s", 
+                        self._discovery.name, detected_model, self._supported)
         self._address = self._discovery.address
         self._name = self._discovery.name
         self._rssi = self._discovery.rssi

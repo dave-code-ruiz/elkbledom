@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, Event
 from homeassistant.const import CONF_MAC, EVENT_HOMEASSISTANT_STOP
@@ -10,6 +7,7 @@ from homeassistant.const import Platform
 
 from .const import DOMAIN, CONF_RESET, CONF_DELAY, CONF_MODEL
 from .elkbledom import BLEDOMInstance
+from .model import ensure_models_loaded
 import logging
 
 LOGGER = logging.getLogger(__name__)
@@ -20,30 +18,6 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
-# Models data key for hass.data
-MODELS_DATA_KEY = f"{DOMAIN}_models"
-
-async def _load_models(hass: HomeAssistant) -> dict:
-    """Load models.json asynchronously using executor."""
-    models_file = Path(__file__).parent / "models.json"
-    
-    def _load_json():
-        try:
-            if not models_file.exists():
-                LOGGER.error("models.json file not found at: %s", models_file)
-                return {}
-            
-            content = models_file.read_text(encoding="utf-8")
-            return json.loads(content)
-        except json.JSONDecodeError as e:
-            LOGGER.error("Error decoding models.json: %s", e)
-            return {}
-        except Exception as e:
-            LOGGER.error("Error loading models.json from %s: %s", models_file, e)
-            return {}
-    
-    return await hass.async_add_executor_job(_load_json)
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up ElkBLEDOM from a config entry."""
     reset = entry.options.get(CONF_RESET, None) or entry.data.get(CONF_RESET, None)
@@ -52,10 +26,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     forced_model = entry.options.get(CONF_MODEL, None) or entry.data.get(CONF_MODEL, None)
     LOGGER.debug("Config: Reset: %s, Delay: %s, Mac: %s, Forced Model: %s", reset, delay, mac, forced_model)
 
-    # Load models.json once and cache in hass.data (shared across all entries)
-    if MODELS_DATA_KEY not in hass.data:
-        LOGGER.debug("Loading models.json asynchronously")
-        hass.data[MODELS_DATA_KEY] = await _load_models(hass)
+    # Ensure models are loaded (will reuse if already in hass.data)
+    await ensure_models_loaded(hass)
     
     instance = BLEDOMInstance(entry.data[CONF_MAC], reset, delay, hass, forced_model)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = instance

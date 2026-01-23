@@ -35,7 +35,7 @@ class EFFECTS (Enum):
     blink_white = 0x9c
     blink_red_green_blue_yellow_cyan_magenta_white = 0x95
 
-class EFFECTS_MELK (Enum):
+class EFFECTS_v2 (Enum):
     Switches_All_Omni = 0x00
     Soft_Fade_All_R = 0x01
     Chase_W_CI = 0x4b
@@ -52,6 +52,21 @@ class EFFECTS_MELK (Enum):
     Fade_All_R = 0x16
     Fade_R_R = 0x1a
     Chase_All_R = 0x0a
+
+class EFFECTS_MELK_OF10 (Enum):
+    AutoPlay = 0x00
+    Magic_Back = 0x01
+    Effect_02 = 0x02
+    Effect_03 = 0x03
+    Effect_04 = 0x04
+    Effect_05 = 0x05
+    Rainbow_Cycle = 0x10
+    Color_Wave = 0x20
+    Breathing = 0x30
+    Strobe = 0x40
+    Jump_RGB = 0x80
+    Fade_RGB = 0x90
+    Blue_Scroll = 0xcf
 
 EFFECTS_list = ['jump_red_green_blue',
     'jump_red_green_blue_yellow_cyan_magenta_white',
@@ -77,7 +92,7 @@ EFFECTS_list = ['jump_red_green_blue',
     'blink_red_green_blue_yellow_cyan_magenta_white'
     ]
 
-EFFECTS_list_MELK = ['Switches_All_Omni',
+EFFECTS_list_v2 = ['Switches_All_Omni',
     'Soft_Fade_All_Red',
     'Chase_W_CI',
     'Chase_All_CO',
@@ -93,6 +108,21 @@ EFFECTS_list_MELK = ['Switches_All_Omni',
     'Fade_All_Right',
     'Fade_Red_Right',
     'Chase_All_Right'
+    ]
+
+EFFECTS_list_MELK_OF10 = ['AutoPlay',
+    'Magic_Back',
+    'Effect_02',
+    'Effect_03',
+    'Effect_04',
+    'Effect_05',
+    'Rainbow_Cycle',
+    'Color_Wave',
+    'Breathing',
+    'Strobe',
+    'Jump_RGB',
+    'Fade_RGB',
+    'Blue_Scroll'
     ]
 
 class MIC_EFFECTS (Enum):
