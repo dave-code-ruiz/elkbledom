@@ -28,8 +28,19 @@ async def _load_models(hass: HomeAssistant) -> dict:
     models_file = Path(__file__).parent / "models.json"
     
     def _load_json():
-        with open(models_file, 'r') as f:
-            return json.load(f)
+        try:
+            if not models_file.exists():
+                LOGGER.error("models.json file not found at: %s", models_file)
+                return {}
+            
+            content = models_file.read_text(encoding="utf-8")
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            LOGGER.error("Error decoding models.json: %s", e)
+            return {}
+        except Exception as e:
+            LOGGER.error("Error loading models.json from %s: %s", models_file, e)
+            return {}
     
     return await hass.async_add_executor_job(_load_json)
 
