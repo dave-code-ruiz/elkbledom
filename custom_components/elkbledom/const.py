@@ -4,6 +4,7 @@ DOMAIN = "elkbledom"
 CONF_RESET = "reset"
 CONF_DELAY = "delay"
 CONF_MODEL = "model"
+CONF_EFFECTS_CLASS = "effects_class"
 
 # Brightness mode configuration
 CONF_BRIGHTNESS_MODE = "brightness_mode"
@@ -124,6 +125,19 @@ EFFECTS_list_MELK_OF10 = ['AutoPlay',
     'Fade_RGB',
     'Blue_Scroll'
     ]
+
+# Dictionary mapping effects class names to actual classes and lists
+EFFECTS_MAP = {
+    "EFFECTS": EFFECTS,
+    "EFFECTS_v2": EFFECTS_v2,
+    "EFFECTS_MELK_OF10": EFFECTS_MELK_OF10
+}
+
+EFFECTS_LIST_MAP = {
+    "EFFECTS_list": EFFECTS_list,
+    "EFFECTS_list_v2": EFFECTS_list_v2,
+    "EFFECTS_list_MELK_OF10": EFFECTS_list_MELK_OF10
+}
 
 class MIC_EFFECTS (Enum):
     # Microphone Effects (0x80-0x87)

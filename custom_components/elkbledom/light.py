@@ -5,7 +5,7 @@ import voluptuous as vol
 from typing import Any, Optional, Tuple
 
 from .elkbledom import BLEDOMInstance
-from .const import DOMAIN, EFFECTS, EFFECTS_list
+from .const import DOMAIN, EFFECTS, EFFECTS_list, EFFECTS_MAP, EFFECTS_LIST_MAP, CONF_EFFECTS_CLASS
 
 from homeassistant.const import CONF_MAC
 from homeassistant.helpers import config_validation as cv
@@ -47,6 +47,7 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         self._attr_name = name
         self._attr_effect = None
         self._attr_unique_id = self._instance.address
+        self._hass = None
 
     @property
     def available(self):
@@ -74,7 +75,21 @@ class BLEDOMLight(RestoreEntity, LightEntity):
 
     @property
     def effect_list(self):
-        return EFFECTS_list
+        """Return list of available effects for this model."""
+        # First check if user has manually configured effects class
+        effects_class_name = self._get_configured_effects_class()
+        if effects_class_name:
+            # Use corresponding effects list (same position in dict)
+            effects_list_name = effects_class_name.replace("EFFECTS", "EFFECTS_list")
+            if effects_class_name == "EFFECTS_v2":
+                effects_list_name = "EFFECTS_list_v2"
+            elif effects_class_name == "EFFECTS_MELK_OF10":
+                effects_list_name = "EFFECTS_list_MELK_OF10"
+            return EFFECTS_LIST_MAP.get(effects_list_name, EFFECTS_list)
+        
+        # Otherwise use model default
+        effects_list_name = self._instance.model.get_effects_list(self._instance.model_name)
+        return EFFECTS_LIST_MAP.get(effects_list_name, EFFECTS_list)
 
     @property
     def effect(self):
@@ -111,9 +126,29 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         """No polling needed for a demo light."""
         return False
 
+    def _get_configured_effects_class(self) -> Optional[str]:
+        """Get the configured effects class from config entry options."""
+        if not self._hass:
+            return None
+        
+        # Get config entry for this entity
+        from homeassistant.helpers import entity_registry
+        ent_reg = entity_registry.async_get(self._hass)
+        entity_entry = ent_reg.async_get(self.entity_id)
+        
+        if entity_entry and entity_entry.config_entry_id:
+            config_entry = self._hass.config_entries.async_get_entry(entity_entry.config_entry_id)
+            if config_entry:
+                return config_entry.options.get(CONF_EFFECTS_CLASS)
+        
+        return None
+    
     async def async_added_to_hass(self) -> None:
         """Restore previous state when entity is added to hass."""
         await super().async_added_to_hass()
+        
+        # Store hass reference for config access
+        self._hass = self.hass
         
         # Restore the last known state
         if (last_state := await self.async_get_last_state()) is not None:
@@ -163,8 +198,13 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             # Restore effect
             if ATTR_EFFECT in last_state.attributes:
                 self._attr_effect = last_state.attributes[ATTR_EFFECT]
-                if self._attr_effect in EFFECTS:
-                    self._instance._effect = EFFECTS[self._attr_effect].value
+                # Get the correct effects class (user configured or model default)
+                effects_class_name = self._get_configured_effects_class()
+                if not effects_class_name:
+                    effects_class_name = self._instance.model.get_effects_class(self._instance.model_name)
+                effects_class = EFFECTS_MAP.get(effects_class_name, EFFECTS)
+                if self._attr_effect in effects_class.__members__:
+                    self._instance._effect = effects_class[self._attr_effect].value
                 LOGGER.debug(f"Restored effect: {self._attr_effect}")
             
             # Restore effect speed from extra attributes
@@ -229,7 +269,12 @@ class BLEDOMLight(RestoreEntity, LightEntity):
 
         if ATTR_EFFECT in kwargs and kwargs[ATTR_EFFECT] != self.effect:
             self._attr_effect = kwargs[ATTR_EFFECT]
-            effect_value = EFFECTS[kwargs[ATTR_EFFECT]].value
+            # Get the correct effects class (user configured or model default)
+            effects_class_name = self._get_configured_effects_class()
+            if not effects_class_name:
+                effects_class_name = self._instance.model.get_effects_class(self._instance.model_name)
+            effects_class = EFFECTS_MAP.get(effects_class_name, EFFECTS)
+            effect_value = effects_class[kwargs[ATTR_EFFECT]].value
             await self._instance.set_effect(effect_value)
             # Also send effect speed to ensure it's applied
             if self._instance.effect_speed is not None:

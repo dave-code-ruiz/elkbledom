@@ -282,6 +282,14 @@ class BLEDOMInstance:
     def mic_enabled(self):
         return self._mic_enabled
     
+    @property
+    def model_name(self):
+        return self._model_name
+    
+    @property
+    def model(self):
+        return self._model
+    
     @retry_bluetooth_connection_error
     async def set_color_temp(self, value: int):
         if value > 100:

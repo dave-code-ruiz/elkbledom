@@ -15,7 +15,7 @@ from homeassistant.components.bluetooth import (
     async_discovered_service_info,
 )
 
-from .const import DOMAIN, CONF_RESET, CONF_DELAY, CONF_MODEL
+from .const import DOMAIN, CONF_RESET, CONF_DELAY, CONF_MODEL, CONF_EFFECTS_CLASS, EFFECTS_MAP
 import logging
 
 LOGGER = logging.getLogger(__name__)
@@ -250,6 +250,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             }
             if CONF_MODEL in user_input:
                 new_options[CONF_MODEL] = user_input[CONF_MODEL]
+            if CONF_EFFECTS_CLASS in user_input:
+                new_options[CONF_EFFECTS_CLASS] = user_input[CONF_EFFECTS_CLASS]
             return self.async_create_entry(title="", data=new_options)
 
         # Ensure models are loaded
@@ -259,6 +261,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         available_models = model_manager.get_models()
         models_dict = {model: model for model in available_models}
         
+        # Get default effects class based on current model
+        current_effects_class = self.config_entry.options.get(CONF_EFFECTS_CLASS)
+        if not current_effects_class and current_model:
+            # Get default from model configuration
+            current_effects_class = model_manager.get_effects_class(current_model)
+        
+        # Create effects class selector
+        effects_classes_dict = {class_name: class_name for class_name in EFFECTS_MAP.keys()}
+        
         schema_dict = {
             vol.Optional(CONF_RESET, default=options.get(CONF_RESET)): bool,
             vol.Optional(CONF_DELAY, default=options.get(CONF_DELAY)): int,
@@ -267,6 +278,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # Add model selector if models are available
         if models_dict:
             schema_dict[vol.Optional(CONF_MODEL, default=current_model)] = vol.In(models_dict)
+        
+        # Add effects class selector
+        if effects_classes_dict and current_effects_class:
+            schema_dict[vol.Optional(CONF_EFFECTS_CLASS, default=current_effects_class)] = vol.In(effects_classes_dict)
+        elif effects_classes_dict:
+            schema_dict[vol.Optional(CONF_EFFECTS_CLASS)] = vol.In(effects_classes_dict)
         
         return self.async_show_form(
             step_id="user",

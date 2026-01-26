@@ -2,6 +2,8 @@
   "ELK-BTC": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [126, 4, 4, 240, 0, 1, 255, 0, 239],
       "turn_off": [126, 4, 4, 0, 0, 0, 255, 0, 239],
@@ -21,6 +23,8 @@
   "ELK-BLEDOB": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [126, 7, 4, 255, 0, 1, 2, 1, 239],
       "turn_off": [126, 7, 4, 0, 0, 0, 2, 1, 239],
@@ -40,6 +44,8 @@
   "ELK-BLEDDM": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [126, 4, 4, 240, 0, 1, 255, 0, 239],
       "turn_off": [126, 4, 4, 0, 0, 0, 255, 0, 239],
@@ -59,6 +65,8 @@
   "ELK-BLEDOM": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [126, 0, 4, 240, 0, 1, 255, 0, 239],
       "turn_off": [126, 0, 4, 0, 0, 0, 255, 0, 239],
@@ -71,13 +79,15 @@
       "query": [126, 0, 1, 250, 0, 0, 0, 0, 239]
     },
     "color_temp_range": {
-      "min_kelvin": 1800,
-      "max_kelvin": 7000
+      "min_kelvin": 2700,
+      "max_kelvin": 6500
     }
   },
   "ELK-BLE": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [126, 0, 4, 240, 0, 1, 255, 0, 239],
       "turn_off": [126, 0, 4, 0, 0, 0, 255, 0, 239],
@@ -90,13 +100,15 @@
       "query": [126, 0, 1, 250, 0, 0, 0, 0, 239]
     },
     "color_temp_range": {
-      "min_kelvin": 1800,
-      "max_kelvin": 7000
+      "min_kelvin": 2700,
+      "max_kelvin": 6500
     }
   },
   "LEDBLE": {
     "write_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000ffe2-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [126, 0, 4, 1, 0, 0, 0, 0, 239],
       "turn_off": [126, 0, 4, 0, 0, 0, 255, 0, 239],
@@ -116,6 +128,8 @@
   "XROCKER": {
     "write_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000ffe2-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [123, 255, 4, 1, 255, 255, 255, 255, 191],
       "turn_off": [123, 255, 4, 0, 255, 255, 255, 255, 191],
@@ -135,6 +149,8 @@
   "MELK-OG10": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS_MELK_OF10",
+    "effects_list": "EFFECTS_list_MELK_OF10",
     "commands": {
       "turn_on": [126, 7, 4, 255, 0, 1, 2, 1, 239],
       "turn_off": [126, 7, 4, 0, 0, 0, 2, 0, 239],
@@ -154,6 +170,8 @@
   "MELK-OF10": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS_MELK_OF10",
+    "effects_list": "EFFECTS_list_MELK_OF10",
     "commands": {
       "turn_on": [126, 4, 4, 240, 0, 1, 255, 0, 239],
       "turn_off": [126, 4, 4, 0, 0, 0, 255, 0, 239],
@@ -173,6 +191,8 @@
   "MELK": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS_MELK_OF10",
+    "effects_list": "EFFECTS_list_MELK_OF10",
     "commands": {
       "turn_on": [126, 0, 4, 1, 0, 0, 0, 0, 239],
       "turn_off": [126, 0, 4, 0, 0, 0, 255, 0, 239],
@@ -185,13 +205,15 @@
       "query": [126, 0, 1, 250, 0, 0, 0, 0, 239]
     },
     "color_temp_range": {
-      "min_kelvin": 1800,
-      "max_kelvin": 7000
+      "min_kelvin": 2700,
+      "max_kelvin": 6500
     }
   },
   "ELK-BULB2": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [126, 0, 4, 240, 0, 1, 255, 0, 239],
       "turn_off": [126, 0, 4, 1, 0, 0, 0, 0, 239],
@@ -211,6 +233,8 @@
   "ELK-BULB": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [126, 0, 4, 1, 0, 0, 0, 0, 239],
       "turn_off": [126, 0, 4, 0, 0, 0, 255, 0, 239],
@@ -230,6 +254,8 @@
   "ELK-LAMPL": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
     "commands": {
       "turn_on": [126, 0, 4, 1, 0, 0, 0, 0, 239],
       "turn_off": [126, 0, 4, 0, 0, 0, 255, 0, 239],

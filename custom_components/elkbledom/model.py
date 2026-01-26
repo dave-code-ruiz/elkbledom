@@ -186,3 +186,15 @@ class Model:
         if model_name in self._models:
             return self._models[model_name].get("color_temp_range", {}).get("max_kelvin", 7000)
         return 7000
+    
+    def get_effects_class(self, model_name: str) -> str:
+        """Get effects class name for model"""
+        if model_name in self._models:
+            return self._models[model_name].get("effects_class", "EFFECTS")
+        return "EFFECTS"
+    
+    def get_effects_list(self, model_name: str) -> str:
+        """Get effects list name for model"""
+        if model_name in self._models:
+            return self._models[model_name].get("effects_list", "EFFECTS_list")
+        return "EFFECTS_list"
