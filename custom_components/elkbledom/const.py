@@ -36,7 +36,7 @@ class EFFECTS (Enum):
     blink_white = 0x9c
     blink_red_green_blue_yellow_cyan_magenta_white = 0x95
 
-class EFFECTS_v2 (Enum):
+class EFFECTS_MELK (Enum):
     Switches_All_Omni = 0x00
     Soft_Fade_All_R = 0x01
     Chase_W_CI = 0x4b
@@ -93,7 +93,7 @@ EFFECTS_list = ['jump_red_green_blue',
     'blink_red_green_blue_yellow_cyan_magenta_white'
     ]
 
-EFFECTS_list_v2 = ['Switches_All_Omni',
+EFFECTS_list_MELK = ['Switches_All_Omni',
     'Soft_Fade_All_Red',
     'Chase_W_CI',
     'Chase_All_CO',
@@ -129,13 +129,13 @@ EFFECTS_list_MELK_OF10 = ['AutoPlay',
 # Dictionary mapping effects class names to actual classes and lists
 EFFECTS_MAP = {
     "EFFECTS": EFFECTS,
-    "EFFECTS_v2": EFFECTS_v2,
+    "EFFECTS_MELK": EFFECTS_MELK,
     "EFFECTS_MELK_OF10": EFFECTS_MELK_OF10
 }
 
 EFFECTS_LIST_MAP = {
     "EFFECTS_list": EFFECTS_list,
-    "EFFECTS_list_v2": EFFECTS_list_v2,
+    "EFFECTS_list_MELK": EFFECTS_list_MELK,
     "EFFECTS_list_MELK_OF10": EFFECTS_list_MELK_OF10
 }
 

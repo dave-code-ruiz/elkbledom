@@ -191,8 +191,8 @@
   "MELK": {
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
-    "effects_class": "EFFECTS_MELK_OF10",
-    "effects_list": "EFFECTS_list_MELK_OF10",
+    "effects_class": "EFFECTS_MELK",
+    "effects_list": "EFFECTS_list_MELK",
     "commands": {
       "turn_on": [126, 0, 4, 1, 0, 0, 0, 0, 239],
       "turn_off": [126, 0, 4, 0, 0, 0, 255, 0, 239],
