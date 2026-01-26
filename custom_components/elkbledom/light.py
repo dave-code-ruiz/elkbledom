@@ -79,13 +79,11 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         # First check if user has manually configured effects class
         effects_class_name = self._get_configured_effects_class()
         if effects_class_name:
-            # Use corresponding effects list (same position in dict)
-            effects_list_name = effects_class_name.replace("EFFECTS", "EFFECTS_list")
-            if effects_class_name == "EFFECTS_v2":
-                effects_list_name = "EFFECTS_list_v2"
-            elif effects_class_name == "EFFECTS_MELK_OF10":
-                effects_list_name = "EFFECTS_list_MELK_OF10"
-            return EFFECTS_LIST_MAP.get(effects_list_name, EFFECTS_list)
+            # Get the corresponding list using the same position in both maps
+            effects_to_list_map = dict(zip(EFFECTS_MAP.keys(), EFFECTS_LIST_MAP.keys()))
+            effects_list_name = effects_to_list_map.get(effects_class_name)
+            if effects_list_name:
+                return EFFECTS_LIST_MAP.get(effects_list_name, EFFECTS_list)
         
         # Otherwise use model default
         effects_list_name = self._instance.model.get_effects_list(self._instance.model_name)
