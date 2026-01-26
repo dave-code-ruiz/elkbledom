@@ -127,7 +127,7 @@
   },
   "XROCKER": {
     "write_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
-    "read_uuid": "0000ffe2-0000-1000-8000-00805f9b34fb",
+    "read_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
     "effects_list": "EFFECTS_list",
     "commands": {
