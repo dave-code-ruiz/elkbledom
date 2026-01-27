@@ -313,6 +313,11 @@ See [Issue #11](https://github.com/dave-code-ruiz/elkbledom/issues/11) for more 
 - Check for Bluetooth interference (WiFi routers, microwaves, etc.)
 - Use a USB Bluetooth adapter with better range
 - Set disconnect delay to `0` (never disconnect) for instant response
+- **Use ESPHome Bluetooth Proxy**: Deploy [ESPHome Bluetooth proxy](https://esphome.io/components/bluetooth_proxy.html) devices (ESP32) closer to your LED strips for extended range and better reliability
+  - ESP32 devices act as Bluetooth bridges
+  - Significantly improves range and connection stability
+  - Cost-effective solution (~$5-10 per ESP32 device)
+  - Multiple proxies can cover larger areas
 
 ---
 
@@ -361,6 +366,8 @@ After setup, you can configure additional options:
 | **Reset color on turn on** | When the LED turns on, reset to white color | `false` | `true` / `false` |
 | **Disconnect delay (seconds)** | Time before disconnecting from the device when idle | `120` | `0` = Never disconnect<br>`30-300` = Seconds |
 | **Brightness mode** | How brightness is controlled | `auto` | `auto` = Automatic detection<br>`rgb` = RGB scaling<br>`native` = Device native |
+| **Model** | Override auto-detected device model | Auto-detected | `ELK-BLEDOB`, `ELK-BLEDOM`, `MELK`, `LEDBLE`, `XROCKER`, etc. |
+| **Effects class** | Change the effects list/behavior | Default | Varies by device model |
 
 #### How to Change Settings
 
@@ -381,16 +388,24 @@ After setup, you can configure additional options:
   - Use `auto` for most devices (automatically detects the best method)
   - Use `rgb` if brightness control doesn't work properly
   - Use `native` for devices with dedicated brightness support
+- **Model**:
+  - Leave as auto-detected unless device is misidentified
+  - Useful if you have a compatible device with a non-standard name
+  - Change only if commands don't work with auto-detected model
+- **Effects class**:
+  - Leave as default for standard device behavior
+  - Change if your device has different effect IDs than expected
+  - Useful for devices with custom firmware or regional variants
 
 ---
 
-## ✨ Features
+## Features
 
 <table>
 <tr>
 <td width="50%">
 
-### 🎨 Supported Features
+### Supported Features
 
 **Automatic Discovery**
 - Automatically finds ELK-BLEDOM devices
@@ -623,7 +638,7 @@ Share the generated JSON in a new issue!
 
 ---
 
-## 📝 Known Issues
+## Known Issues
 
 | Issue | Status | Workaround |
 |-------|--------|------------|
