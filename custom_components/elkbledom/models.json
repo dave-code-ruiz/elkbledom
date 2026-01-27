@@ -79,8 +79,8 @@
       "query": [126, 0, 1, 250, 0, 0, 0, 0, 239]
     },
     "color_temp_range": {
-      "min_kelvin": 2700,
-      "max_kelvin": 6500
+      "min_kelvin": 1800,
+      "max_kelvin": 7000
     }
   },
   "ELK-BLE": {
@@ -100,8 +100,8 @@
       "query": [126, 0, 1, 250, 0, 0, 0, 0, 239]
     },
     "color_temp_range": {
-      "min_kelvin": 2700,
-      "max_kelvin": 6500
+      "min_kelvin": 1800,
+      "max_kelvin": 7000
     }
   },
   "LEDBLE": {
@@ -205,8 +205,8 @@
       "query": [126, 0, 1, 250, 0, 0, 0, 0, 239]
     },
     "color_temp_range": {
-      "min_kelvin": 2700,
-      "max_kelvin": 6500
+      "min_kelvin": 1800,
+      "max_kelvin": 7000
     }
   },
   "ELK-BULB2": {

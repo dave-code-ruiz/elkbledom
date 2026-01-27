@@ -317,15 +317,16 @@ class BLEDOMInstance:
             brightness = self._brightness if self._brightness is not None else 255
         self._brightness = brightness
         
-        if value > 5000:
-            # For high color temperatures, use white mode
-            intensity = max(0, min(int(brightness), 255))
-            percent = int(intensity * 100 / 255)
-            await self.set_white(percent)
+        # 
+        # if value > 5000:
+        #     # For high color temperatures, use white mode
+        #     intensity = max(0, min(int(brightness), 255))
+        #     percent = int(intensity * 100 / 255)
+        #     await self.set_white(percent)
         
         # Standard RGB-emulation for color temperature
-        color_temp_percent = int(((value - min_temp) * 100) / (max_temp - min_temp))
-        brightness_percent = int(brightness * 100 / 255)
+        # color_temp_percent = int(((value - min_temp) * 100) / (max_temp - min_temp))
+        # brightness_percent = int(brightness * 100 / 255)
         
         # Use RGB emulation for wider color temperature range
         warm = (255, 138, 18)  # Warm white ~1800K
