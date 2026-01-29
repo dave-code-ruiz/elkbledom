@@ -50,7 +50,10 @@ This integration currently supports the following device models:
 - **ELK-BULB** 
 - **ELK-BULB2** 
 - **ELK-LAMPL** 
-- **MELK** 
+- **MELK**
+- **MELK-OA10**
+- **MELK-OC10**
+- **MELK-OF10**
 - **MELK-OG10**
 - **LEDBLE**
 - **XROCKER** 

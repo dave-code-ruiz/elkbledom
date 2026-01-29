@@ -42,7 +42,7 @@
       "Fade_R_R": 26,
       "Chase_All_R": 10
     },
-    "EFFECTS_MELK_OF10": {
+    "EFFECTS_MELK_Ox": {
       "AutoPlay": 0,
       "Magic_Back": 1,
       "Effect_02": 2,
@@ -101,7 +101,7 @@
       "Fade_Red_Right",
       "Chase_All_Right"
     ],
-    "EFFECTS_list_MELK_OF10": [
+    "EFFECTS_list_MELK_Ox": [
       "AutoPlay",
       "Magic_Back",
       "Effect_02",
