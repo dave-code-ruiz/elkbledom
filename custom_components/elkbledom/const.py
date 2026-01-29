@@ -1,4 +1,6 @@
 from enum import Enum
+import json
+from pathlib import Path
 
 DOMAIN = "elkbledom"
 CONF_RESET = "reset"
@@ -10,135 +12,6 @@ CONF_EFFECTS_CLASS = "effects_class"
 CONF_BRIGHTNESS_MODE = "brightness_mode"
 BRIGHTNESS_MODES = ["auto", "rgb", "native"]
 DEFAULT_BRIGHTNESS_MODE = "auto"
-
-class EFFECTS (Enum):
-    # Light Effects (0x87-0x9C)
-    jump_red_green_blue = 0x87
-    jump_red_green_blue_yellow_cyan_magenta_white = 0x88
-    crossfade_red = 0x8b
-    crossfade_green = 0x8c
-    crossfade_blue = 0x8d
-    crossfade_yellow = 0x8e
-    crossfade_cyan = 0x8f
-    crossfade_magenta = 0x90
-    crossfade_white = 0x91
-    crossfade_red_green = 0x92
-    crossfade_red_blue = 0x93
-    crossfade_green_blue = 0x94
-    crossfade_red_green_blue = 0x89
-    crossfade_red_green_blue_yellow_cyan_magenta_white = 0x8a
-    blink_red = 0x96
-    blink_green = 0x97
-    blink_blue = 0x98
-    blink_yellow = 0x99
-    blink_cyan = 0x9a
-    blink_magenta = 0x9b
-    blink_white = 0x9c
-    blink_red_green_blue_yellow_cyan_magenta_white = 0x95
-
-class EFFECTS_MELK (Enum):
-    Switches_All_Omni = 0x00
-    Soft_Fade_All_R = 0x01
-    Chase_W_CI = 0x4b
-    Chase_All_CO = 0x3a
-    Chase_All_SL = 0x4d
-    Fade_G_R = 0x1c
-    Chase_RWR_L = 0x9b
-    Chase_WBW_L = 0x97
-    Chase_RWR_R = 0x9c
-    Chase_WBW_R = 0x98
-    Fast_Chase_All_R = 0x10
-    Fade_C_L = 0x21
-    Fade_RGB_L = 0x05
-    Fade_All_R = 0x16
-    Fade_R_R = 0x1a
-    Chase_All_R = 0x0a
-
-class EFFECTS_MELK_OF10 (Enum):
-    AutoPlay = 0x00
-    Magic_Back = 0x01
-    Effect_02 = 0x02
-    Effect_03 = 0x03
-    Effect_04 = 0x04
-    Effect_05 = 0x05
-    Rainbow_Cycle = 0x10
-    Color_Wave = 0x20
-    Breathing = 0x30
-    Strobe = 0x40
-    Jump_RGB = 0x80
-    Fade_RGB = 0x90
-    Blue_Scroll = 0xcf
-
-EFFECTS_list = ['jump_red_green_blue',
-    'jump_red_green_blue_yellow_cyan_magenta_white',
-    'crossfade_red',
-    'crossfade_green',
-    'crossfade_blue',
-    'crossfade_yellow',
-    'crossfade_cyan',
-    'crossfade_magenta',
-    'crossfade_white',
-    'crossfade_red_green',
-    'crossfade_red_blue',
-    'crossfade_green_blue',
-    'crossfade_red_green_blue',
-    'crossfade_red_green_blue_yellow_cyan_magenta_white',
-    'blink_red',
-    'blink_green',
-    'blink_blue',
-    'blink_yellow',
-    'blink_cyan',
-    'blink_magenta',
-    'blink_white',
-    'blink_red_green_blue_yellow_cyan_magenta_white'
-    ]
-
-EFFECTS_list_MELK = ['Switches_All_Omni',
-    'Soft_Fade_All_Red',
-    'Chase_W_CI',
-    'Chase_All_CO',
-    'Chase_All_SL',
-    'Fade_Green_Right',
-    'Chase_Red_White_Red_Left',
-    'Chase_White_Blue_White_Left',
-    'Chase_Red_White_Red_Right',
-    'Chase_White_Blue_White_Right',
-    'Fast_Chase_All_Right',
-    'Fade_Cyan_Left',
-    'Fade_Red_Green_Blue_Left',
-    'Fade_All_Right',
-    'Fade_Red_Right',
-    'Chase_All_Right'
-    ]
-
-EFFECTS_list_MELK_OF10 = ['AutoPlay',
-    'Magic_Back',
-    'Effect_02',
-    'Effect_03',
-    'Effect_04',
-    'Effect_05',
-    'Rainbow_Cycle',
-    'Color_Wave',
-    'Breathing',
-    'Strobe',
-    'Jump_RGB',
-    'Fade_RGB',
-    'Blue_Scroll'
-    ]
-
-# Dictionary mapping effects class names to actual classes and lists
-EFFECTS_MAP = {
-    "EFFECTS": EFFECTS,
-    "EFFECTS_MELK": EFFECTS_MELK,
-    "EFFECTS_MELK_OF10": EFFECTS_MELK_OF10
-}
-
-EFFECTS_LIST_MAP = {
-    "EFFECTS_list": EFFECTS_list,
-    "EFFECTS_list_MELK": EFFECTS_list_MELK,
-    "EFFECTS_list_MELK_OF10": EFFECTS_list_MELK_OF10
-}
-
 class MIC_EFFECTS (Enum):
     # Microphone Effects (0x80-0x87)
     mic_energic = 0x80
@@ -175,3 +48,36 @@ class WEEK_DAYS (Enum):
     none = 0x00
 
 #print(EFFECTS.blink_red.value)
+
+# Load effects definitions from models.json
+def _load_effects_from_json():
+    """Load effects definitions and lists from models.json"""
+    models_file = Path(__file__).parent / "models.json"
+    try:
+        with open(models_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            effects_defs = data.get("effects_definitions", {})
+            effects_lists = data.get("effects_lists", {})
+            
+            # Create Enum classes dynamically for all effects definitions
+            effects_enums = {}
+            for effect_class_name, effect_values in effects_defs.items():
+                effects_enums[effect_class_name] = Enum(effect_class_name, effect_values)
+            
+            return effects_enums, effects_lists
+    except Exception as e:
+        # Fallback to empty dicts if file doesn't exist or can't be loaded
+        return {}, {}
+
+_effects_enums, _effects_lists_data = _load_effects_from_json()
+
+# Export all effect classes and lists dynamically
+# This allows adding new effects in models.json without changing this file
+globals().update(_effects_enums)  # EFFECTS, EFFECTS_MELK, EFFECTS_MELK_OF10, etc.
+globals().update(_effects_lists_data)  # EFFECTS_list, EFFECTS_list_MELK, etc.
+
+# Create EFFECTS_MAP with all dynamically loaded effect classes
+EFFECTS_MAP = _effects_enums.copy()
+
+# Create EFFECTS_LIST_MAP with all dynamically loaded effect lists
+EFFECTS_LIST_MAP = _effects_lists_data.copy()

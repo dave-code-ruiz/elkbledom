@@ -3,12 +3,16 @@ import json
 import logging
 from pathlib import Path
 from typing import Optional, Dict, List
+from enum import Enum
 from homeassistant.core import HomeAssistant
 
 LOGGER = logging.getLogger(__name__)
 
 # Models data key - must match __init__.py
 MODELS_DATA_KEY = "elkbledom_models"
+
+# Cache for dynamically created effect enums
+_EFFECTS_CACHE = {}
 
 async def ensure_models_loaded(hass: HomeAssistant) -> Dict[str, Dict]:
     """Ensure models are loaded in hass.data, loading them if necessary."""
@@ -197,4 +201,40 @@ class Model:
         """Get effects list name for model"""
         if model_name in self._models:
             return self._models[model_name].get("effects_list", "EFFECTS_list")
-        return "EFFECTS_list"
+        return "EFFECTS_list"    
+    def get_effect_value(self, effects_class_name: str, effect_name: str) -> Optional[int]:
+        """Get effect value from effects definitions"""
+        effects_defs = self._models.get("effects_definitions", {})
+        effects_class = effects_defs.get(effects_class_name, {})
+        return effects_class.get(effect_name)
+    
+    def get_effects_enum(self, effects_class_name: str) -> Optional[type]:
+        """Get or create an Enum class for the specified effects class"""
+        # Check cache first
+        if effects_class_name in _EFFECTS_CACHE:
+            return _EFFECTS_CACHE[effects_class_name]
+        
+        effects_defs = self._models.get("effects_definitions", {})
+        if effects_class_name not in effects_defs:
+            return None
+        
+        # Create enum dynamically
+        effects_dict = effects_defs[effects_class_name]
+        effects_enum = Enum(effects_class_name, effects_dict)
+        
+        # Cache it
+        _EFFECTS_CACHE[effects_class_name] = effects_enum
+        return effects_enum
+    
+    def get_effects_list_values(self, effects_list_name: str) -> List[str]:
+        """Get list of effect names for a specific effects list"""
+        effects_lists = self._models.get("effects_lists", {})
+        return effects_lists.get(effects_list_name, [])
+    
+    def get_all_effects_definitions(self) -> Dict[str, Dict[str, int]]:
+        """Get all effects definitions"""
+        return self._models.get("effects_definitions", {})
+    
+    def get_all_effects_lists(self) -> Dict[str, List[str]]:
+        """Get all effects lists"""
+        return self._models.get("effects_lists", {})
