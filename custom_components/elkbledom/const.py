@@ -49,12 +49,12 @@ class WEEK_DAYS (Enum):
 
 #print(EFFECTS.blink_red.value)
 
-# Load effects definitions from models.json
+# Load effects definitions from definitions.json
 def _load_effects_from_json():
-    """Load effects definitions and lists from models.json"""
-    models_file = Path(__file__).parent / "models.json"
+    """Load effects definitions and lists from definitions.json"""
+    definitions_file = Path(__file__).parent / "definitions.json"
     try:
-        with open(models_file, 'r', encoding='utf-8') as f:
+        with open(definitions_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
             effects_defs = data.get("effects_definitions", {})
             effects_lists = data.get("effects_lists", {})

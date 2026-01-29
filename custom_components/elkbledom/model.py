@@ -204,7 +204,8 @@ class Model:
         return "EFFECTS_list"    
     def get_effect_value(self, effects_class_name: str, effect_name: str) -> Optional[int]:
         """Get effect value from effects definitions"""
-        effects_defs = self._models.get("effects_definitions", {})
+        definitions = self._load_definitions()
+        effects_defs = definitions.get("effects_definitions", {})
         effects_class = effects_defs.get(effects_class_name, {})
         return effects_class.get(effect_name)
     
@@ -214,7 +215,8 @@ class Model:
         if effects_class_name in _EFFECTS_CACHE:
             return _EFFECTS_CACHE[effects_class_name]
         
-        effects_defs = self._models.get("effects_definitions", {})
+        definitions = self._load_definitions()
+        effects_defs = definitions.get("effects_definitions", {})
         if effects_class_name not in effects_defs:
             return None
         
@@ -228,13 +230,28 @@ class Model:
     
     def get_effects_list_values(self, effects_list_name: str) -> List[str]:
         """Get list of effect names for a specific effects list"""
-        effects_lists = self._models.get("effects_lists", {})
+        definitions = self._load_definitions()
+        effects_lists = definitions.get("effects_lists", {})
         return effects_lists.get(effects_list_name, [])
     
     def get_all_effects_definitions(self) -> Dict[str, Dict[str, int]]:
         """Get all effects definitions"""
-        return self._models.get("effects_definitions", {})
+        definitions = self._load_definitions()
+        return definitions.get("effects_definitions", {})
     
     def get_all_effects_lists(self) -> Dict[str, List[str]]:
         """Get all effects lists"""
-        return self._models.get("effects_lists", {})
+        definitions = self._load_definitions()
+        return definitions.get("effects_lists", {})
+    
+    def _load_definitions(self) -> Dict:
+        """Load definitions from definitions.json"""
+        definitions_file = Path(__file__).parent / "definitions.json"
+        try:
+            if not definitions_file.exists():
+                return {}
+            content = definitions_file.read_text(encoding="utf-8")
+            return json.loads(content)
+        except Exception as e:
+            LOGGER.error("Error loading definitions.json: %s", e)
+            return {}
