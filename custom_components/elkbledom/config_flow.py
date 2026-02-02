@@ -106,6 +106,8 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             if self._model_name:
                 self._effects_class = model_manager.get_effects_class(self._model_name)
                 LOGGER.debug("Auto-detected effects class: %s for model: %s", self._effects_class, self._model_name)
+            else:
+                LOGGER.warning("No model detected for device: %s", self.name)
             result = await self.async_set_unique_id(self.mac, raise_on_progress=False)
             if result is not None:
                 return self.async_abort(reason="already_in_progress")
@@ -152,8 +154,11 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     entry_data = {CONF_MAC: self.mac, "name": self.name}
                     if self._model_name:
                         entry_data[CONF_MODEL] = self._model_name
+                        LOGGER.debug("Saving model to entry_data: %s", self._model_name)
                     if self._effects_class:
                         entry_data[CONF_EFFECTS_CLASS] = self._effects_class
+                        LOGGER.debug("Saving effects_class to entry_data: %s", self._effects_class)
+                    LOGGER.debug("Creating entry with data: %s", entry_data)
                     return self.async_create_entry(title=self.name, data=entry_data)
                 return self.async_abort(reason="cannot_validate")
             
