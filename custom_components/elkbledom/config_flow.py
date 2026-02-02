@@ -103,7 +103,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             # Find the device's Bluetooth name from discovered devices
             bluetooth_device_name = None
             for device in self._discovered_devices:
-                if device.mac == self.mac:
+                if device.address == self.mac:
                     bluetooth_device_name = device.name
                     break
             
