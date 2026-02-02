@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "mac": "MACアドレス",
+          "name": "名前"
+        },
+        "title": "ELK-BLEDOM FastLink を追加",
+        "description": "検出されたデバイスを選択するか、MACアドレスを手動で入力してください。"
+      },
+      "manual": {
+        "data": {
+          "mac": "MACアドレス",
+          "name": "名前"
+        },
+        "title": "Bluetooth MACアドレスを入力"
+      }
+    },
+    "error": {
+      "connect": "Elkbledom に接続できませんでした"
+    },
+    "abort": {
+      "cannot_validate": "Elkbledom を検証できませんでした",
+      "cannot_connect": "Elkbledom に接続できませんでした",
+      "not_supported": "Elkbledom デバイスはサポートされていません",
+      "invalid_discovery_info": "無効なBluetoothデバイス情報"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "reset": "Home Assistant 再起動時にリセット",
+          "delay": "遅延（秒）",
+          "brightness_mode": "明るさモード"
+        },
+        "title": "ELK-BLEDOM FastLink オプション",
+        "description": "デバイスに明るさを適用する方法を選択します。"
+      }
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "mac": "MAC adresa",
+          "name": "Název"
+        },
+        "title": "Přidat ELK-BLEDOM FastLink",
+        "description": "Vyberte nalezené zařízení nebo zadejte MAC adresu ručně."
+      },
+      "manual": {
+        "data": {
+          "mac": "MAC adresa",
+          "name": "Název"
+        },
+        "title": "Zadejte Bluetooth MAC adresu"
+      }
+    },
+    "error": {
+      "connect": "Nelze se připojit k Elkbledom"
+    },
+    "abort": {
+      "cannot_validate": "Nelze ověřit Elkbledom",
+      "cannot_connect": "Nelze se připojit k Elkbledom",
+      "not_supported": "Zařízení Elkbledom není podporováno",
+      "invalid_discovery_info": "Neplatné informace o Bluetooth zařízení"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "reset": "Resetovat při restartu Home Assistant",
+          "delay": "Zpoždění (sekundy)",
+          "brightness_mode": "Režim jasu"
+        },
+        "title": "Možnosti ELK-BLEDOM FastLink",
+        "description": "Vyberte, jak se použije jas zařízení."
+      }
+    }
+  }
+}

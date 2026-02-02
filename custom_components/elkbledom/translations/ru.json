@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "mac": "MAC-адрес",
+          "name": "Имя"
+        },
+        "title": "Добавить ELK-BLEDOM FastLink",
+        "description": "Выберите найденное устройство или введите MAC-адрес вручную."
+      },
+      "manual": {
+        "data": {
+          "mac": "MAC-адрес",
+          "name": "Имя"
+        },
+        "title": "Введите MAC-адрес Bluetooth"
+      }
+    },
+    "error": {
+      "connect": "Не удалось подключиться к Elkbledom"
+    },
+    "abort": {
+      "cannot_validate": "Не удалось подтвердить Elkbledom",
+      "cannot_connect": "Не удалось подключиться к Elkbledom",
+      "not_supported": "Устройство Elkbledom не поддерживается",
+      "invalid_discovery_info": "Некорректная информация об устройстве Bluetooth"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "reset": "Сброс при перезапуске Home Assistant",
+          "delay": "Задержка (в секундах)",
+          "brightness_mode": "Режим яркости"
+        },
+        "title": "Параметры ELK-BLEDOM FastLink",
+        "description": "Выберите способ управления яркостью устройства."
+      }
+    }
+  }
+}

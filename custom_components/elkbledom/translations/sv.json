@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "mac": "MAC-adress",
+          "name": "Namn"
+        },
+        "title": "Lägg till ELK-BLEDOM FastLink",
+        "description": "Välj en upptäckt enhet eller ange MAC-adressen manuellt."
+      },
+      "manual": {
+        "data": {
+          "mac": "MAC-adress",
+          "name": "Namn"
+        },
+        "title": "Ange Bluetooth MAC-adress"
+      }
+    },
+    "error": {
+      "connect": "Kunde inte ansluta till Elkbledom"
+    },
+    "abort": {
+      "cannot_validate": "Kunde inte validera Elkbledom",
+      "cannot_connect": "Kunde inte ansluta till Elkbledom",
+      "not_supported": "Elkbledom-enheten stöds inte",
+      "invalid_discovery_info": "Ogiltig Bluetooth-enhetsinformation"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "reset": "Återställ vid omstart av Home Assistant",
+          "delay": "Fördröjning (sekunder)",
+          "brightness_mode": "Ljusstyrkeläge"
+        },
+        "title": "ELK-BLEDOM FastLink-alternativ",
+        "description": "Välj hur ljusstyrkan ska tillämpas på enheten."
+      }
+    }
+  }
+}

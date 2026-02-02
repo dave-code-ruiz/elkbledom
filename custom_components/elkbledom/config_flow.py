@@ -33,6 +33,7 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._instance = None
         self.name = None
         self._model_name = None
+        self._effects_class = None
         self._discovery_info: BluetoothServiceInfoBleak | None = None
         self._discovered_devices = []
 
@@ -100,6 +101,11 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             LOGGER.debug("Available models in manager: %d", available_models_count)
             self._model_name = model_manager.detect_model(self.name or "")
             LOGGER.debug("Auto-detected model: %s for device: %s (from %d available models)", self._model_name, self.name, available_models_count)
+            # Also detect effects class for auto-detected model
+            self._effects_class = None
+            if self._model_name:
+                self._effects_class = model_manager.get_effects_class(self._model_name)
+                LOGGER.debug("Auto-detected effects class: %s for model: %s", self._effects_class, self._model_name)
             result = await self.async_set_unique_id(self.mac, raise_on_progress=False)
             if result is not None:
                 return self.async_abort(reason="already_in_progress")
@@ -146,6 +152,8 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     entry_data = {CONF_MAC: self.mac, "name": self.name}
                     if self._model_name:
                         entry_data[CONF_MODEL] = self._model_name
+                    if self._effects_class:
+                        entry_data[CONF_EFFECTS_CLASS] = self._effects_class
                     return self.async_create_entry(title=self.name, data=entry_data)
                 return self.async_abort(reason="cannot_validate")
             
@@ -174,7 +182,8 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             self.mac = user_input[CONF_MAC]
             self.name = user_input["name"]
             self._model_name = user_input.get(CONF_MODEL)
-            LOGGER.debug("Manual setup - MAC: %s, Name: %s, Model: %s", self.mac, self.name, self._model_name)
+            self._effects_class = user_input.get(CONF_EFFECTS_CLASS)
+            LOGGER.debug("Manual setup - MAC: %s, Name: %s, Model: %s, Effects: %s", self.mac, self.name, self._model_name, self._effects_class)
             await self.async_set_unique_id(format_mac(self.mac))
             return await self.async_step_validate()
 
@@ -184,17 +193,21 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         model_manager = Model(self.hass)
         available_models = model_manager.get_models()
         LOGGER.debug("Manual setup - Available models: %d - %s", len(available_models), available_models)
-        models_dict = {model: model for model in available_models}
+        models_dict = model_manager.get_models_display_dict()
         
         if not models_dict:
             LOGGER.error("No models available in manual setup! Check if models.json is loaded.")
+        
+        # Create effects class selector
+        effects_classes_dict = {class_name: class_name for class_name in EFFECTS_MAP.keys()}
         
         return self.async_show_form(
             step_id="manual", data_schema=vol.Schema(
                 {
                     vol.Required(CONF_MAC): str,
                     vol.Required("name"): str,
-                    vol.Required(CONF_MODEL): vol.In(models_dict)
+                    vol.Required(CONF_MODEL): vol.In(models_dict),
+                    vol.Optional(CONF_EFFECTS_CLASS): vol.In(effects_classes_dict)
                 }
             ), errors={})
 
@@ -249,7 +262,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_DELAY: user_input[CONF_DELAY]
             }
             if CONF_MODEL in user_input:
-                new_options[CONF_MODEL] = user_input[CONF_MODEL]
+                # Map display name back to actual model name
+                model_manager = Model(self.hass)
+                selected_model = model_manager.get_model_name_from_display(user_input[CONF_MODEL])
+                new_options[CONF_MODEL] = selected_model
             if CONF_EFFECTS_CLASS in user_input:
                 new_options[CONF_EFFECTS_CLASS] = user_input[CONF_EFFECTS_CLASS]
             return self.async_create_entry(title="", data=new_options)
@@ -258,11 +274,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         await ensure_models_loaded(self.hass)
         # Get available models
         model_manager = Model(self.hass)
-        available_models = model_manager.get_models()
-        models_dict = {model: model for model in available_models}
+        models_dict = model_manager.get_models_display_dict()
         
         # Get default effects class based on current model
-        current_effects_class = self.config_entry.options.get(CONF_EFFECTS_CLASS)
+        current_effects_class = self.config_entry.options.get(CONF_EFFECTS_CLASS) or self.config_entry.data.get(CONF_EFFECTS_CLASS)
         if not current_effects_class and current_model:
             # Get default from model configuration
             current_effects_class = model_manager.get_effects_class(current_model)
@@ -270,18 +285,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # Create effects class selector
         effects_classes_dict = {class_name: class_name for class_name in EFFECTS_MAP.keys()}
         
+        # Get display name for current model (may include handle info)
+        current_model_display = model_manager.get_display_name_for_model(current_model) if current_model else None
+        
         schema_dict = {
             vol.Optional(CONF_RESET, default=options.get(CONF_RESET)): bool,
             vol.Optional(CONF_DELAY, default=options.get(CONF_DELAY)): int,
         }
         
-        # Add model selector if models are available
-        if models_dict:
-            schema_dict[vol.Optional(CONF_MODEL, default=current_model)] = vol.In(models_dict)
+        # Add model selector if models are available - using suggested_value to show as "forced"
+        if models_dict and current_model_display:
+            schema_dict[vol.Required(CONF_MODEL, description={"suggested_value": current_model_display})] = vol.In(models_dict)
+        elif models_dict:
+            schema_dict[vol.Optional(CONF_MODEL)] = vol.In(models_dict)
         
-        # Add effects class selector
+        # Add effects class selector - using suggested_value to show as "forced"
         if effects_classes_dict and current_effects_class:
-            schema_dict[vol.Optional(CONF_EFFECTS_CLASS, default=current_effects_class)] = vol.In(effects_classes_dict)
+            schema_dict[vol.Required(CONF_EFFECTS_CLASS, description={"suggested_value": current_effects_class})] = vol.In(effects_classes_dict)
         elif effects_classes_dict:
             schema_dict[vol.Optional(CONF_EFFECTS_CLASS)] = vol.In(effects_classes_dict)
         

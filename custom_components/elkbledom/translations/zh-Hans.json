@@ -1,0 +1,43 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "mac": "MAC 地址",
+          "name": "名称"
+        },
+        "title": "添加 ELK-BLEDOM FastLink",
+        "description": "选择已发现的设备或手动输入 MAC 地址。"
+      },
+      "manual": {
+        "data": {
+          "mac": "MAC 地址",
+          "name": "名称"
+        },
+        "title": "输入蓝牙 MAC 地址"
+      }
+    },
+    "error": {
+      "connect": "无法连接到 Elkbledom"
+    },
+    "abort": {
+      "cannot_validate": "无法验证 Elkbledom",
+      "cannot_connect": "无法连接到 Elkbledom",
+      "not_supported": "不支持 Elkbledom 设备",
+      "invalid_discovery_info": "无效的蓝牙设备信息"
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "data": {
+          "reset": "Home Assistant 重启时重置",
+          "delay": "延迟（秒）",
+          "brightness_mode": "亮度模式"
+        },
+        "title": "ELK-BLEDOM FastLink 选项",
+        "description": "选择如何将亮度应用到设备。"
+      }
+    }
+  }
+}

@@ -61,6 +61,86 @@ class Model:
         """Get list of all supported model names"""
         return list(self._models.keys())
     
+    def get_models_display_dict(self) -> Dict[str, str]:
+        """Get dictionary of model display names to model names.
+        
+        For models with handles, display as "Model Name (handle X)".
+        This is used in config flow UI to show differentiated model names.
+        
+        Returns:
+            Dict mapping display name -> actual model name
+        """
+        display_dict = {}
+        # Group models by base name
+        model_groups = {}
+        for model_name, model_data in self._models.items():
+            if model_name not in model_groups:
+                model_groups[model_name] = []
+            model_groups[model_name].append(model_data)
+        
+        # Create display names
+        for model_name, model_list in model_groups.items():
+            if len(model_list) == 1:
+                # Single model with this name
+                model_data = model_list[0]
+                handle = model_data.get("handle")
+                if handle is not None:
+                    display_name = f"{model_name} (handle {handle})"
+                else:
+                    display_name = model_name
+                display_dict[display_name] = model_name
+            else:
+                # Multiple models with same name - differentiate by handle
+                for model_data in model_list:
+                    handle = model_data.get("handle")
+                    if handle is not None:
+                        display_name = f"{model_name} (handle {handle})"
+                    else:
+                        display_name = model_name
+                    display_dict[display_name] = model_name
+        
+        return display_dict
+    
+    def get_display_name_for_model(self, model_name: str) -> Optional[str]:
+        """Get display name for a specific model.
+        
+        Args:
+            model_name: The actual model name
+            
+        Returns:
+            Display name (may include handle info)
+        """
+        if model_name not in self._models:
+            return model_name
+        
+        model_data = self._models[model_name]
+        handle = model_data.get("handle")
+        
+        # Check if there are other models with the same name
+        same_name_count = sum(1 for m in self._models.keys() if m == model_name)
+        
+        if handle is not None and same_name_count > 1:
+            return f"{model_name} (handle {handle})"
+        elif handle is not None:
+            return f"{model_name} (handle {handle})"
+        else:
+            return model_name
+    
+    def get_model_name_from_display(self, display_name: str) -> str:
+        """Convert display name back to actual model name.
+        
+        Args:
+            display_name: Display name (may include handle info like "ELK-BLEDOM (handle 13)")
+            
+        Returns:
+            Actual model name (e.g., "ELK-BLEDOM")
+        """
+        # Check if it's in the format "ModelName (handle X)"
+        if " (handle " in display_name and display_name.endswith(")"):
+            # Extract just the model name part
+            return display_name.split(" (handle ")[0]
+        return display_name
+    
     def detect_model(self, device_name: str) -> Optional[str]:
         """Detect model from device name"""
         device_name_lower = device_name.lower()
