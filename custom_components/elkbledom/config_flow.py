@@ -262,10 +262,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_DELAY: user_input[CONF_DELAY]
             }
             if CONF_MODEL in user_input:
-                # Map display name back to actual model name
-                model_manager = Model(self.hass)
-                selected_model = model_manager.get_model_name_from_display(user_input[CONF_MODEL])
-                new_options[CONF_MODEL] = selected_model
+                # Value is already internal_key from vol.In
+                new_options[CONF_MODEL] = user_input[CONF_MODEL]
             if CONF_EFFECTS_CLASS in user_input:
                 new_options[CONF_EFFECTS_CLASS] = user_input[CONF_EFFECTS_CLASS]
             return self.async_create_entry(title="", data=new_options)
@@ -285,25 +283,26 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # Create effects class selector
         effects_classes_dict = {class_name: class_name for class_name in EFFECTS_MAP.keys()}
         
-        # Get display name for current model (may include handle info)
-        current_model_display = model_manager.get_display_name_for_model(current_model) if current_model else None
-        
         schema_dict = {
             vol.Optional(CONF_RESET, default=options.get(CONF_RESET)): bool,
             vol.Optional(CONF_DELAY, default=options.get(CONF_DELAY)): int,
         }
         
-        # Add model selector if models are available - using suggested_value to show as "forced"
-        if models_dict and current_model_display:
-            schema_dict[vol.Required(CONF_MODEL, description={"suggested_value": current_model_display})] = vol.In(models_dict)
-        elif models_dict:
-            schema_dict[vol.Optional(CONF_MODEL)] = vol.In(models_dict)
+        # Add model selector if models are available
+        if models_dict:
+            if current_model and current_model in models_dict:
+                # Use default to pre-select current model
+                schema_dict[vol.Optional(CONF_MODEL, default=current_model)] = vol.In(models_dict)
+            else:
+                schema_dict[vol.Optional(CONF_MODEL)] = vol.In(models_dict)
         
-        # Add effects class selector - using suggested_value to show as "forced"
-        if effects_classes_dict and current_effects_class:
-            schema_dict[vol.Required(CONF_EFFECTS_CLASS, description={"suggested_value": current_effects_class})] = vol.In(effects_classes_dict)
-        elif effects_classes_dict:
-            schema_dict[vol.Optional(CONF_EFFECTS_CLASS)] = vol.In(effects_classes_dict)
+        # Add effects class selector
+        if effects_classes_dict:
+            if current_effects_class:
+                # Use default to pre-select current effects class
+                schema_dict[vol.Optional(CONF_EFFECTS_CLASS, default=current_effects_class)] = vol.In(effects_classes_dict)
+            else:
+                schema_dict[vol.Optional(CONF_EFFECTS_CLASS)] = vol.In(effects_classes_dict)
         
         return self.async_show_form(
             step_id="user",

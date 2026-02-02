@@ -85,13 +85,13 @@ class Model:
         return list(model_names)
     
     def get_models_display_dict(self) -> Dict[str, str]:
-        """Get dictionary of model display names to internal keys.
+        """Get dictionary of internal keys to display names.
         
         For models with handles, display as "Model Name (handle X)".
         This is used in config flow UI to show differentiated model names.
         
         Returns:
-            Dict mapping display name -> internal key
+            Dict mapping internal key -> display name (for vol.In)
         """
         display_dict = {}
         
@@ -105,7 +105,8 @@ class Model:
             else:
                 display_name = model_name
             
-            display_dict[display_name] = internal_key
+            # Map internal_key -> display_name for vol.In
+            display_dict[internal_key] = display_name
         
         return display_dict
     
@@ -130,18 +131,20 @@ class Model:
         else:
             return model_name
     
-    def get_model_name_from_display(self, display_name: str) -> str:
-        """Convert display name back to internal key.
+    def get_model_name_from_display(self, value: str) -> str:
+        """Convert form value to internal key.
+        
+        Since we now use {internal_key: display_name} in vol.In,
+        the form already returns the internal_key directly.
         
         Args:
-            display_name: Display name (may include handle info like "ELK-BLEDOM (handle 13)")
+            value: Value from form (already internal_key)
             
         Returns:
-            Internal key (e.g., "ELK-BLEDOM#13" or "ELK-BLEDOM")
+            Internal key
         """
-        # Find matching internal key in models
-        display_dict = self.get_models_display_dict()
-        return display_dict.get(display_name, display_name)
+        # Value is already the internal_key from the form
+        return value
     
     def detect_model(self, device_name: str) -> Optional[str]:
         """Detect model from device name.
