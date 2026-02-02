@@ -95,19 +95,28 @@ class BLEDOMFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             self.name = user_input["name"]
             # Ensure models are loaded before auto-detect
             await ensure_models_loaded(self.hass)
-            # Auto-detect model from device name
+            # Auto-detect model from Bluetooth device name (not user-given name)
             model_manager = Model(self.hass)
             available_models_count = len(model_manager.get_models())
             LOGGER.debug("Available models in manager: %d", available_models_count)
-            self._model_name = model_manager.detect_model(self.name or "")
-            LOGGER.debug("Auto-detected model: %s for device: %s (from %d available models)", self._model_name, self.name, available_models_count)
+            
+            # Find the device's Bluetooth name from discovered devices
+            bluetooth_device_name = None
+            for device in self._discovered_devices:
+                if device.mac == self.mac:
+                    bluetooth_device_name = device.name
+                    break
+            
+            LOGGER.debug("Bluetooth device name: %s, User-given name: %s", bluetooth_device_name, self.name)
+            self._model_name = model_manager.detect_model(bluetooth_device_name or "")
+            LOGGER.debug("Auto-detected model: %s for device: %s (from %d available models)", self._model_name, bluetooth_device_name, available_models_count)
             # Also detect effects class for auto-detected model
             self._effects_class = None
             if self._model_name:
                 self._effects_class = model_manager.get_effects_class(self._model_name)
                 LOGGER.debug("Auto-detected effects class: %s for model: %s", self._effects_class, self._model_name)
             else:
-                LOGGER.warning("No model detected for device: %s", self.name)
+                LOGGER.warning("No model detected for Bluetooth device: %s (user name: %s)", bluetooth_device_name, self.name)
             result = await self.async_set_unique_id(self.mac, raise_on_progress=False)
             if result is not None:
                 return self.async_abort(reason="already_in_progress")
