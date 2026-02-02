@@ -29,9 +29,28 @@ async def ensure_models_loaded(hass: HomeAssistant) -> Dict[str, Dict]:
                 return {}
             
             content = models_file.read_text(encoding="utf-8")
-            models = json.loads(content)
-            LOGGER.debug("Loaded %d models from models.json", len(models))
-            return models
+            models_array = json.loads(content)
+            
+            # Convert array to dictionary for internal use
+            # Each model gets a unique internal key: name or name_handle
+            models_dict = {}
+            for model in models_array:
+                model_name = model.get("name", "Unknown")
+                handle = model.get("handle")
+                
+                # Create unique internal key
+                if handle is not None:
+                    internal_key = f"{model_name}#{handle}"
+                else:
+                    internal_key = model_name
+                
+                # Store the model data with the internal key
+                models_dict[internal_key] = model.copy()
+                # Ensure 'name' field is preserved
+                models_dict[internal_key]["name"] = model_name
+                
+            LOGGER.debug("Loaded %d models from models.json array", len(models_dict))
+            return models_dict
         except json.JSONDecodeError as e:
             LOGGER.error("Error decoding models.json: %s", e)
             return {}
@@ -58,112 +77,123 @@ class Model:
             self._models = get_models_data(hass)
     
     def get_models(self) -> List[str]:
-        """Get list of all supported model names"""
-        return list(self._models.keys())
+        """Get list of all supported model names (without internal keys)"""
+        # Return unique model names
+        model_names = set()
+        for internal_key, model_data in self._models.items():
+            model_names.add(model_data.get("name", internal_key.split("#")[0]))
+        return list(model_names)
     
     def get_models_display_dict(self) -> Dict[str, str]:
-        """Get dictionary of model display names to model names.
+        """Get dictionary of model display names to internal keys.
         
         For models with handles, display as "Model Name (handle X)".
         This is used in config flow UI to show differentiated model names.
         
         Returns:
-            Dict mapping display name -> actual model name
+            Dict mapping display name -> internal key
         """
         display_dict = {}
-        # Group models by base name
-        model_groups = {}
-        for model_name, model_data in self._models.items():
-            if model_name not in model_groups:
-                model_groups[model_name] = []
-            model_groups[model_name].append(model_data)
         
-        # Create display names
-        for model_name, model_list in model_groups.items():
-            if len(model_list) == 1:
-                # Single model with this name
-                model_data = model_list[0]
-                handle = model_data.get("handle")
-                if handle is not None:
-                    display_name = f"{model_name} (handle {handle})"
-                else:
-                    display_name = model_name
-                display_dict[display_name] = model_name
+        for internal_key, model_data in self._models.items():
+            model_name = model_data.get("name", internal_key.split("#")[0])
+            handle = model_data.get("handle")
+            
+            # Create display name
+            if handle is not None:
+                display_name = f"{model_name} (handle {handle})"
             else:
-                # Multiple models with same name - differentiate by handle
-                for model_data in model_list:
-                    handle = model_data.get("handle")
-                    if handle is not None:
-                        display_name = f"{model_name} (handle {handle})"
-                    else:
-                        display_name = model_name
-                    display_dict[display_name] = model_name
+                display_name = model_name
+            
+            display_dict[display_name] = internal_key
         
         return display_dict
     
-    def get_display_name_for_model(self, model_name: str) -> Optional[str]:
-        """Get display name for a specific model.
+    def get_display_name_for_model(self, internal_key: str) -> Optional[str]:
+        """Get display name for a specific model by internal key.
         
         Args:
-            model_name: The actual model name
+            internal_key: The internal key (e.g., "ELK-BLEDOM#13" or "ELK-BLEDOM")
             
         Returns:
             Display name (may include handle info)
         """
-        if model_name not in self._models:
-            return model_name
+        if internal_key not in self._models:
+            return internal_key
         
-        model_data = self._models[model_name]
+        model_data = self._models[internal_key]
+        model_name = model_data.get("name", internal_key.split("#")[0])
         handle = model_data.get("handle")
         
-        # Check if there are other models with the same name
-        same_name_count = sum(1 for m in self._models.keys() if m == model_name)
-        
-        if handle is not None and same_name_count > 1:
-            return f"{model_name} (handle {handle})"
-        elif handle is not None:
+        if handle is not None:
             return f"{model_name} (handle {handle})"
         else:
             return model_name
     
     def get_model_name_from_display(self, display_name: str) -> str:
-        """Convert display name back to actual model name.
+        """Convert display name back to internal key.
         
         Args:
             display_name: Display name (may include handle info like "ELK-BLEDOM (handle 13)")
             
         Returns:
-            Actual model name (e.g., "ELK-BLEDOM")
+            Internal key (e.g., "ELK-BLEDOM#13" or "ELK-BLEDOM")
         """
-        # Check if it's in the format "ModelName (handle X)"
-        if " (handle " in display_name and display_name.endswith(")"):
-            # Extract just the model name part
-            return display_name.split(" (handle ")[0]
-        return display_name
+        # Find matching internal key in models
+        display_dict = self.get_models_display_dict()
+        return display_dict.get(display_name, display_name)
     
     def detect_model(self, device_name: str) -> Optional[str]:
-        """Detect model from device name"""
+        """Detect model from device name.
+        
+        Returns:
+            Internal key of the detected model
+        """
         device_name_lower = device_name.lower()
-        # Sort model names by length (longest first) to match most specific models first
-        sorted_models = sorted(self._models.keys(), key=len, reverse=True)
-        for model_name in sorted_models:
+        
+        # Collect all matching models by device name
+        matching_models = []
+        for internal_key, model_data in self._models.items():
+            model_name = model_data.get("name", internal_key.split("#")[0])
             if device_name_lower.startswith(model_name.lower()):
-                return model_name
-        return None
+                matching_models.append((internal_key, model_data))
+        
+        if not matching_models:
+            return None
+        
+        # Sort by model name length (longest first) for most specific match
+        matching_models.sort(key=lambda x: len(x[1].get("name", "")), reverse=True)
+        
+        # If only one match, return it
+        if len(matching_models) == 1:
+            return matching_models[0][0]
+        
+        # Multiple matches: prefer the one without handle (generic version)
+        for internal_key, model_data in matching_models:
+            if model_data.get("handle") is None:
+                LOGGER.debug("Model detected by name (generic): %s", internal_key)
+                return internal_key
+        
+        # All have handles, return first (most specific)
+        return matching_models[0][0]
     
     def detect_model_by_handle(self, device_name: str, char_handle: int) -> Optional[str]:
         """Detect model from device name and characteristic handle.
         
         When multiple models have the same name but different handles,
         the handle is used to select the correct one.
+        
+        Returns:
+            Internal key of the detected model
         """
         device_name_lower = device_name.lower()
         
         # Collect all matching models by name
         matching_models = []
-        for model_name, model_data in self._models.items():
+        for internal_key, model_data in self._models.items():
+            model_name = model_data.get("name", internal_key.split("#")[0])
             if device_name_lower.startswith(model_name.lower()):
-                matching_models.append((model_name, model_data))
+                matching_models.append((internal_key, model_data))
         
         if not matching_models:
             return None
@@ -173,11 +203,20 @@ class Model:
             return matching_models[0][0]
         
         # Multiple matches: prefer the one with matching handle
-        for model_name, model_data in matching_models:
+        for internal_key, model_data in matching_models:
             model_handle = model_data.get("handle")
             if model_handle is not None and char_handle == model_handle:
-                LOGGER.debug("Model detected by handle: %s (handle: 0x%04x)", model_name, char_handle)
-                return model_name
+                LOGGER.debug("Model detected by handle: %s (handle: 0x%04x)", internal_key, char_handle)
+                return internal_key
+        
+        # No handle match: return the one without handle (generic version)
+        for internal_key, model_data in matching_models:
+            if model_data.get("handle") is None:
+                LOGGER.debug("Model detected by name (no handle match): %s", internal_key)
+                return internal_key
+        
+        # Fallback: return first match
+        return matching_models[0][0]
         
         # No handle match: return the one without handle (generic version)
         for model_name, model_data in matching_models:
@@ -188,67 +227,67 @@ class Model:
         # Fallback: return first match
         return matching_models[0][0]
     
-    def get_handle(self, model_name: str) -> Optional[int]:
-        """Get handle for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("handle")
+    def get_handle(self, internal_key: str) -> Optional[int]:
+        """Get handle for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("handle")
         return None
     
-    def get_write_uuid(self, model_name: str) -> Optional[str]:
-        """Get write characteristic UUID for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("write_uuid")
+    def get_write_uuid(self, internal_key: str) -> Optional[str]:
+        """Get write characteristic UUID for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("write_uuid")
         return None
     
-    def get_read_uuid(self, model_name: str) -> Optional[str]:
-        """Get read characteristic UUID for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("read_uuid")
+    def get_read_uuid(self, internal_key: str) -> Optional[str]:
+        """Get read characteristic UUID for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("read_uuid")
         return None
     
-    def get_turn_on_cmd(self, model_name: str) -> Optional[List[int]]:
-        """Get turn on command for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("commands", {}).get("turn_on")
+    def get_turn_on_cmd(self, internal_key: str) -> Optional[List[int]]:
+        """Get turn on command for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("commands", {}).get("turn_on")
         return None
     
-    def get_turn_off_cmd(self, model_name: str) -> Optional[List[int]]:
-        """Get turn off command for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("commands", {}).get("turn_off")
+    def get_turn_off_cmd(self, internal_key: str) -> Optional[List[int]]:
+        """Get turn off command for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("commands", {}).get("turn_off")
         return None
     
-    def get_white_cmd(self, model_name: str, intensity: int) -> Optional[List[int]]:
-        """Get white command for model with intensity"""
-        if model_name in self._models:
-            cmd = self._models[model_name].get("commands", {}).get("white", []).copy()
+    def get_white_cmd(self, internal_key: str, intensity: int) -> Optional[List[int]]:
+        """Get white command for model with intensity by internal key"""
+        if internal_key in self._models:
+            cmd = self._models[internal_key].get("commands", {}).get("white", []).copy()
             # Replace 'i' placeholder with intensity value
             cmd = [int(intensity * 100 / 255) if x == "i" else x for x in cmd]
             return cmd
         return None
     
-    def get_effect_speed_cmd(self, model_name: str, value: int) -> Optional[List[int]]:
-        """Get effect speed command for model"""
-        if model_name in self._models:
-            cmd = self._models[model_name].get("commands", {}).get("effect_speed", []).copy()
+    def get_effect_speed_cmd(self, internal_key: str, value: int) -> Optional[List[int]]:
+        """Get effect speed command for model by internal key"""
+        if internal_key in self._models:
+            cmd = self._models[internal_key].get("commands", {}).get("effect_speed", []).copy()
             # Replace 'v' placeholder with value
             cmd = [int(value) if x == "v" else x for x in cmd]
             return cmd
         return None
     
-    def get_effect_cmd(self, model_name: str, value: int) -> Optional[List[int]]:
-        """Get effect command for model"""
-        if model_name in self._models:
-            cmd = self._models[model_name].get("commands", {}).get("effect", []).copy()
+    def get_effect_cmd(self, internal_key: str, value: int) -> Optional[List[int]]:
+        """Get effect command for model by internal key"""
+        if internal_key in self._models:
+            cmd = self._models[internal_key].get("commands", {}).get("effect", []).copy()
             # Replace 'v' placeholder with value
             cmd = [int(value) if x == "v" else x for x in cmd]
             return cmd
         return None
     
-    def get_color_temp_cmd(self, model_name: str, warm: int, cold: int) -> Optional[List[int]]:
-        """Get color temperature command for model"""
-        if model_name in self._models:
-            cmd = self._models[model_name].get("commands", {}).get("color_temp", []).copy()
+    def get_color_temp_cmd(self, internal_key: str, warm: int, cold: int) -> Optional[List[int]]:
+        """Get color temperature command for model by internal key"""
+        if internal_key in self._models:
+            cmd = self._models[internal_key].get("commands", {}).get("color_temp", []).copy()
             # Replace 'w' and 'c' placeholders with warm and cold values
             result = []
             for x in cmd:
@@ -261,10 +300,10 @@ class Model:
             return result
         return None
     
-    def get_color_cmd(self, model_name: str, r: int, g: int, b: int) -> Optional[List[int]]:
-        """Get color command for model"""
-        if model_name in self._models:
-            cmd = self._models[model_name].get("commands", {}).get("color", []).copy()
+    def get_color_cmd(self, internal_key: str, r: int, g: int, b: int) -> Optional[List[int]]:
+        """Get color command for model by internal key"""
+        if internal_key in self._models:
+            cmd = self._models[internal_key].get("commands", {}).get("color", []).copy()
             # Replace 'r', 'g', 'b' placeholders with RGB values
             result = []
             for x in cmd:
@@ -279,51 +318,51 @@ class Model:
             return result
         return None
     
-    def get_brightness_cmd(self, model_name: str, intensity: int) -> Optional[List[int]]:
-        """Get brightness command for model"""
-        if model_name in self._models:
-            cmd = self._models[model_name].get("commands", {}).get("brightness", []).copy()
+    def get_brightness_cmd(self, internal_key: str, intensity: int) -> Optional[List[int]]:
+        """Get brightness command for model by internal key"""
+        if internal_key in self._models:
+            cmd = self._models[internal_key].get("commands", {}).get("brightness", []).copy()
             # Replace 'i' placeholder with intensity value
             cmd = [int(intensity * 100 / 255) if x == "i" else x for x in cmd]
             return cmd
         return None
     
-    def get_query_cmd(self, model_name: str) -> Optional[List[int]]:
-        """Get query command for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("commands", {}).get("query")
+    def get_query_cmd(self, internal_key: str) -> Optional[List[int]]:
+        """Get query command for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("commands", {}).get("query")
         return None
     
-    def get_sync_time_cmd(self, model_name: str, hour: int, minute: int, second: int, day_of_week: int) -> List[int]:
+    def get_sync_time_cmd(self, internal_key: str, hour: int, minute: int, second: int, day_of_week: int) -> List[int]:
         """Get sync time command (same for all models)"""
         return [0x7e, 0x00, 0x83, hour, minute, second, day_of_week, 0x00, 0xef]
     
-    def get_custom_time_cmd(self, model_name: str, hour: int, minute: int, second: int, day_of_week: int) -> List[int]:
+    def get_custom_time_cmd(self, internal_key: str, hour: int, minute: int, second: int, day_of_week: int) -> List[int]:
         """Get custom time command (same for all models)"""
         return [0x7e, 0x00, 0x83, hour, minute, second, day_of_week, 0x00, 0xef]
     
-    def get_min_color_temp_kelvin(self, model_name: str) -> int:
-        """Get minimum color temperature in Kelvin for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("color_temp_range", {}).get("min_kelvin", 1800)
+    def get_min_color_temp_kelvin(self, internal_key: str) -> int:
+        """Get minimum color temperature in Kelvin for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("color_temp_range", {}).get("min_kelvin", 1800)
         return 1800
     
-    def get_max_color_temp_kelvin(self, model_name: str) -> int:
-        """Get maximum color temperature in Kelvin for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("color_temp_range", {}).get("max_kelvin", 7000)
+    def get_max_color_temp_kelvin(self, internal_key: str) -> int:
+        """Get maximum color temperature in Kelvin for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("color_temp_range", {}).get("max_kelvin", 7000)
         return 7000
     
-    def get_effects_class(self, model_name: str) -> str:
-        """Get effects class name for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("effects_class", "EFFECTS")
+    def get_effects_class(self, internal_key: str) -> str:
+        """Get effects class name for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("effects_class", "EFFECTS")
         return "EFFECTS"
     
-    def get_effects_list(self, model_name: str) -> str:
-        """Get effects list name for model"""
-        if model_name in self._models:
-            return self._models[model_name].get("effects_list", "EFFECTS_list")
+    def get_effects_list(self, internal_key: str) -> str:
+        """Get effects list name for model by internal key"""
+        if internal_key in self._models:
+            return self._models[internal_key].get("effects_list", "EFFECTS_list")
         return "EFFECTS_list"    
     def get_effect_value(self, effects_class_name: str, effect_name: str) -> Optional[int]:
         """Get effect value from effects definitions"""

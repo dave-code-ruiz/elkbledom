@@ -1,5 +1,6 @@
-{
-  "ELK-BTC": {
+[
+  {
+    "name": "ELK-BTC",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -20,7 +21,8 @@
       "max_kelvin": 7000
     }
   },
-  "ELK-BLEDOB": {
+  {
+    "name": "ELK-BLEDOB",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -41,7 +43,8 @@
       "max_kelvin": 7000
     }
   },
-  "ELK-BLEDDM": {
+  {
+    "name": "ELK-BLEDDM",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -62,7 +65,8 @@
       "max_kelvin": 7000
     }
   },
-    "ELK-BLEDOM": {
+  {
+    "name": "ELK-BLEDOM",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "handle": 13,
@@ -84,7 +88,8 @@
       "max_kelvin": 7000
     }
   },
-  "ELK-BLEDOM": {
+  {
+    "name": "ELK-BLEDOM",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -105,7 +110,8 @@
       "max_kelvin": 7000
     }
   },
-  "ELK-BLE": {
+  {
+    "name": "ELK-BLE",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -126,7 +132,8 @@
       "max_kelvin": 7000
     }
   },
-  "LEDBLE": {
+  {
+    "name": "LEDBLE",
     "write_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000ffe2-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -147,7 +154,8 @@
       "max_kelvin": 7000
     }
   },
-  "XROCKER": {
+  {
+    "name": "XROCKER",
     "write_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -168,7 +176,8 @@
       "max_kelvin": 7000
     }
   },
-  "MELK-OG10": {
+  {
+    "name": "MELK-OG10",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS_MELK_Ox",
@@ -189,7 +198,8 @@
       "max_kelvin": 7000
     }
   },
-  "MELK-OF10": {
+  {
+    "name": "MELK-OF10",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS_MELK_Ox",
@@ -210,7 +220,8 @@
       "max_kelvin": 7000
     }
   },
-  "MELK-OC10": {
+  {
+    "name": "MELK-OC10",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS_MELK_Ox",
@@ -231,7 +242,8 @@
       "max_kelvin": 7000
     }
   },
-  "MELK-OA10": {
+  {
+    "name": "MELK-OA10",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS_MELK_Ox",
@@ -252,7 +264,8 @@
       "max_kelvin": 7000
     }
   },
-  "MELK": {
+  {
+    "name": "MELK",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS_MELK",
@@ -273,7 +286,8 @@
       "max_kelvin": 7000
     }
   },
-  "ELK-BULB2": {
+  {
+    "name": "ELK-BULB2",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -294,7 +308,8 @@
       "max_kelvin": 7000
     }
   },
-  "ELK-BULB": {
+  {
+    "name": "ELK-BULB",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -315,7 +330,8 @@
       "max_kelvin": 7000
     }
   },
-  "ELK-LAMPL": {
+  {
+    "name": "ELK-LAMPL",
     "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
@@ -336,4 +352,4 @@
       "max_kelvin": 7000
     }
   }
-}
+]
