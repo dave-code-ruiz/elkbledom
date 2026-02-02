@@ -2,15 +2,10 @@
   "domain": "elkbledom",
   "name": "ElkBLEDOM",
   "bluetooth": [
-      { "local_name": "ELK-BULB2*" },
-      { "local_name": "ELK-BULB*" },
+      { "local_name": "ELK*" },
       { "local_name": "XROCKER*" },
-      { "local_name": "ELK-BLE*" },
-      { "local_name": "ELK-BLEDOB*" },
-      { "local_name": "ELK-BTC*" },
       { "local_name": "MELK*" },
-      { "local_name": "LEDBLE*" },
-      { "local_name": "ELK-LAMPL*" }
+      { "local_name": "LEDBLE*" }
     ],
   "codeowners": ["@dave-code-ruiz"],
   "config_flow": true,

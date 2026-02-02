@@ -183,15 +183,32 @@ class BLEDOMInstance:
                      self._model.get_turn_off_cmd(self._model_name), 
                      self.rssi)
         
-    def _detect_model(self):
-        """Detect the model using Model manager"""
-        self._model = Model(self._hass)
+    def _detect_model(self, char_handle: Optional[int] = None):
+        """Detect the model using Model manager.
+        
+        Args:
+            char_handle: Optional characteristic handle for refined detection
+        """
+        if not hasattr(self, '_model') or self._model is None:
+            self._model = Model(self._hass)
         
         # Use forced model if provided, otherwise auto-detect
         if self._forced_model:
             self._model_name = self._forced_model
-            LOGGER.info("%s: Using forced model: %s", self._device.name, self._model_name)
+            LOGGER.info("%s: Using forced model: %s", self._device.name, self._forced_model)
+        elif char_handle is not None:
+            # Use handle-based detection when available
+            detected = self._model.detect_model_by_handle(self._device.name or "", char_handle)
+            if detected:
+                if hasattr(self, '_model_name') and self._model_name and detected != self._model_name:
+                    LOGGER.info("%s: Model refined from '%s' to '%s' based on handle 0x%04x", 
+                               self._device.name, self._model_name, detected, char_handle)
+                self._model_name = detected
+            else:
+                LOGGER.warning("Unknown model for device %s with handle 0x%04x", self._device.name, char_handle)
+                self._model_name = "ELK-BLEDOM"  # Default fallback
         else:
+            # Standard name-based detection
             self._model_name = self._model.detect_model(self._device.name or "")
             LOGGER.debug("%s: Auto-detected model: %s", self._device.name, self._model_name)
         
@@ -751,11 +768,16 @@ class BLEDOMInstance:
         write_uuid = self._model.get_write_uuid(self._model_name)
         if write_uuid and (char := services.get_characteristic(write_uuid)):
             self._write_uuid = str(char.uuid)  # Ensure it's a string
-            LOGGER.debug("%s: Found write UUID: %s with handle %s", self.name, self._write_uuid, char.handle if hasattr(char, 'handle') else 'Unknown')
-            if self.name == "ELK-BLEDOM" and hasattr(char, 'handle') and char.handle == 0x000d:
-                LOGGER.debug("%s: Adjusting model for ELK-BLEDOM specific handle issue 111", self.name)
-                self._model = Model(self._hass)
-                self._model_name = self._model.detect_model("ELK-BLEDDM")
+            char_handle = char.handle if hasattr(char, 'handle') else None
+            LOGGER.debug("%s: Found write UUID: %s with handle %s", self.name, self._write_uuid, f"0x{char_handle:04x}" if char_handle else 'Unknown')
+            
+            # Re-detect model based on handle if available
+            if char_handle is not None:
+                self._detect_model(char_handle)
+                # Update write_uuid in case model changed
+                write_uuid = self._model.get_write_uuid(self._model_name)
+                if write_uuid:
+                    self._write_uuid = str(write_uuid)
         else:
             self._write_uuid = None
             LOGGER.error("%s: Could not find write characteristic: %s", self.name, write_uuid)

@@ -71,6 +71,49 @@ class Model:
                 return model_name
         return None
     
+    def detect_model_by_handle(self, device_name: str, char_handle: int) -> Optional[str]:
+        """Detect model from device name and characteristic handle.
+        
+        When multiple models have the same name but different handles,
+        the handle is used to select the correct one.
+        """
+        device_name_lower = device_name.lower()
+        
+        # Collect all matching models by name
+        matching_models = []
+        for model_name, model_data in self._models.items():
+            if device_name_lower.startswith(model_name.lower()):
+                matching_models.append((model_name, model_data))
+        
+        if not matching_models:
+            return None
+        
+        # If only one match, return it
+        if len(matching_models) == 1:
+            return matching_models[0][0]
+        
+        # Multiple matches: prefer the one with matching handle
+        for model_name, model_data in matching_models:
+            model_handle = model_data.get("handle")
+            if model_handle is not None and char_handle == model_handle:
+                LOGGER.debug("Model detected by handle: %s (handle: 0x%04x)", model_name, char_handle)
+                return model_name
+        
+        # No handle match: return the one without handle (generic version)
+        for model_name, model_data in matching_models:
+            if model_data.get("handle") is None:
+                LOGGER.debug("Model detected by name (no handle match): %s", model_name)
+                return model_name
+        
+        # Fallback: return first match
+        return matching_models[0][0]
+    
+    def get_handle(self, model_name: str) -> Optional[int]:
+        """Get handle for model"""
+        if model_name in self._models:
+            return self._models[model_name].get("handle")
+        return None
+    
     def get_write_uuid(self, model_name: str) -> Optional[str]:
         """Get write characteristic UUID for model"""
         if model_name in self._models:
