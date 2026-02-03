@@ -81,10 +81,6 @@ This integration currently supports the following device models:
 
 1. Open **HACS** in your Home Assistant
 2. Go to **Integrations**
-3. Click the **⋮** menu (top right) → **Custom repositories**
-4. Add repository URL: `https://github.com/dave-code-ruiz/elkbledom`
-5. Category: **Integration**
-6. Click **Add**
 7. Search for **"elkbledom"** in HACS
 8. Click **Download**
 9. Restart Home Assistant
