@@ -77,13 +77,8 @@ class DeviceData():
     def __init__(self, hass, discovery_info):
         self._discovery = discovery_info
         model_manager = Model(hass)
-        available_models = model_manager.get_models()
-        LOGGER.debug("DeviceData init - Available models: %d", len(available_models))
         detected_model = model_manager.detect_model(self._discovery.name or "")
         self._supported = detected_model is not None
-        if self._discovery.name:
-            LOGGER.debug("DeviceData - Device: %s, Detected model: %s, Supported: %s", 
-                        self._discovery.name, detected_model, self._supported)
         self._address = self._discovery.address
         self._name = self._discovery.name
         self._rssi = self._discovery.rssi
@@ -168,7 +163,7 @@ class BLEDOMInstance:
         for discovery_info in async_discovered_service_info(hass):
             if discovery_info.address == address:
                 devicedata = DeviceData(hass, discovery_info)
-                LOGGER.debug("device %s: %s %s",devicedata.name, devicedata.address, devicedata.rssi)
+                #LOGGER.debug("device %s: %s %s",devicedata.name, devicedata.address, devicedata.rssi)
                 if devicedata.is_supported:
                     self._device_data = devicedata
         
