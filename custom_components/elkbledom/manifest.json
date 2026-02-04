@@ -5,7 +5,10 @@
       { "local_name": "ELK*" },
       { "local_name": "XROCKER*" },
       { "local_name": "MELK*" },
-      { "local_name": "LEDBLE*" }
+      { "local_name": "LEDBLE*" },
+      { "local_name": "LED-*" },
+      { "local_name": "JACKYLED*" },
+      { "local_name": "DMRRBA*" }      
     ],
   "codeowners": ["@dave-code-ruiz"],
   "config_flow": true,

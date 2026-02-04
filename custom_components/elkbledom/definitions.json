@@ -24,6 +24,17 @@
       "blink_white": 156,
       "blink_red_green_blue_yellow_cyan_magenta_white": 149
     },
+    "EFFECTS_DMRRBA": {
+      "flash": 1,
+      "breath": 6,
+      "colt": 7,
+      "candle": 8,
+      "ambulance": 9,
+      "rgb_fade": 2,
+      "rainbow_fade": 3,
+      "rgb_jump": 4,
+      "rainbow_jump": 5
+    },
     "EFFECTS_MELK": {
       "Switches_All_Omni": 0,
       "Soft_Fade_All_R": 1,
@@ -82,6 +93,17 @@
       "blink_magenta",
       "blink_white",
       "blink_red_green_blue_yellow_cyan_magenta_white"
+    ],
+    "EFFECTS_list_DMRRBA": [
+      "flash",
+      "breath",
+      "colt",
+      "candle",
+      "ambulance",
+      "rgb_fade",
+      "rainbow_fade",
+      "rgb_jump",
+      "rainbow_jump"
     ],
     "EFFECTS_list_MELK": [
       "Switches_All_Omni",

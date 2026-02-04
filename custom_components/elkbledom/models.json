@@ -102,7 +102,7 @@
       "effect": [126, 0, 3, "v", 3, 0, 0, 0, 239],
       "color_temp": [126, 0, 5, 2, "w", "c", 0, 0, 239],
       "color": [126, 0, 5, 3, "r", "g", "b", 0, 239],
-      "brightness": [126, 4, 1, "i", 255, 0, 255, 0, 239],
+      "brightness": [126, 0, 1, "i", 255, 0, 255, 0, 239],
       "query": [126, 0, 1, 250, 0, 0, 0, 0, 239]
     },
     "color_temp_range": {
@@ -155,6 +155,50 @@
     }
   },
   {
+    "name": "LED-",
+    "write_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
+    "read_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
+    "commands": {
+      "turn_on": [126, 4, 4, 1, 255, 255, 255, 0, 239],
+      "turn_off": [126, 4, 4, 0, 0, 0, 0, 0, 239],
+      "white": [126, 4, 1, "i", 255, 255, 255, 0, 239],
+      "effect_speed": [126, 0, 2, "v", 0, 0, 0, 0, 239],
+      "effect": [126, 5, 3, "v", 3, 255, 255, 0, 239],
+      "color_temp": [126, 0, 5, 2, "w", "c", 0, 0, 239],
+      "color": [126, 7, 5, 3, "r", "b", "g", 0, 239],
+      "brightness": [126, 4, 1, "i", 255, 255, 255, 0, 239],
+      "query": []
+    },
+    "color_temp_range": {
+      "min_kelvin": 1800,
+      "max_kelvin": 7000
+    }
+  },
+  {
+    "name": "JACKYLED",
+    "write_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
+    "read_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
+    "commands": {
+      "turn_on": [126, 4, 4, 1, 255, 255, 255, 0, 239],
+      "turn_off": [126, 4, 4, 0, 0, 0, 0, 0, 239],
+      "white": [126, 4, 1, "i", 255, 255, 255, 0, 239],
+      "effect_speed": [126, 0, 2, "v", 0, 0, 0, 0, 239],
+      "effect": [126, 5, 3, "v", 3, 255, 255, 0, 239],
+      "color_temp": [126, 0, 5, 2, "w", "c", 0, 0, 239],
+      "color": [126, 7, 5, 3, "r", "b", "g", 0, 239],
+      "brightness": [126, 4, 1, "i", 255, 255, 255, 0, 239],
+      "query": []
+    },
+    "color_temp_range": {
+      "min_kelvin": 1800,
+      "max_kelvin": 7000
+    }
+  },
+  {
     "name": "XROCKER",
     "write_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
     "read_uuid": "0000ffe1-0000-1000-8000-00805f9b34fb",
@@ -170,6 +214,28 @@
       "color": [123, 255, 5, 3, "r", "g", "b", 255, 191],
       "brightness": [123, 4, 1, "i", 255, 255, 255, 255, 191],
       "query": [126, 16]
+    },
+    "color_temp_range": {
+      "min_kelvin": 1800,
+      "max_kelvin": 7000
+    }
+  },
+  {
+    "name": "MELK-OG10W",
+    "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
+    "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS_MELK_Ox",
+    "effects_list": "EFFECTS_list_MELK_Ox",
+    "commands": {
+      "turn_on": [126, 7, 4, 255, 0, 1, 2, 1, 239],
+      "turn_off": [126, 7, 4, 0, 0, 0, 2, 0, 239],
+      "white": [126, 7, 5, 1, "i", 255, 2, 1],
+      "effect_speed": [126, 0, 2, "v", 0, 0, 0, 0, 239],
+      "effect": [126, 0, 3, "v", 3, 0, 0, 0, 239],
+      "color_temp": [126, 6, 5, 2, "w", "c", 255, 8, 239],
+      "color": [126, 0, 5, 3, "r", "g", "b", 0, 239],
+      "brightness": [126, 4, 1, "i", 255, 0, 255, 0, 239],
+      "query": [126, 0, 1, 250, 0, 0, 0, 0, 239]
     },
     "color_temp_range": {
       "min_kelvin": 1800,
@@ -350,6 +416,28 @@
     "color_temp_range": {
       "min_kelvin": 1800,
       "max_kelvin": 7000
+    }
+  },
+  {
+    "name": "DMRRBA-007",
+    "write_uuid": "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    "read_uuid": "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+    "effects_class": "EFFECTS_DMRRBA",
+    "effects_list": "EFFECTS_list_DMRRBA",
+    "commands": {
+      "turn_on": [90, 1, 2, 1],
+      "turn_off": [90, 1, 2, 0],
+      "white": [90, 6, 1, "i", 0],
+      "effect_speed": [90, 4, 4, "v"],
+      "effect": [90, 4, 1, "v"],
+      "color_temp": [90, 6, 1, "w", "c"],
+      "color": [90, 7, 1, "r", "g", "b"],
+      "brightness": [90, 3, 1, "i", 0],
+      "query": []
+    },
+    "color_temp_range": {
+      "min_kelvin": 1000,
+      "max_kelvin": 40000
     }
   }
 ]
