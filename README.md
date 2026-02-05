@@ -47,6 +47,7 @@ This integration currently supports the following device models:
 - **ELK-BLEDOB** 
 - **ELK-BLEDDM**
 - **ELK-BLE**
+- **ELK-BTC**
 - **ELK-BULB** 
 - **ELK-BULB2** 
 - **ELK-LAMPL** 
@@ -55,8 +56,12 @@ This integration currently supports the following device models:
 - **MELK-OC10**
 - **MELK-OF10**
 - **MELK-OG10**
+- **MELK-OG10W**
 - **LEDBLE**
-- **XROCKER** 
+- **LED-** (Generic LED strips)
+- **JACKYLED**
+- **XROCKER**
+- **DMRRBA-007** 
 
 </td>
 </tr>
@@ -426,6 +431,11 @@ After setup, you can configure additional options:
 - Built-in light effects
 - Adjustable effect speed
 - Effect selection
+- **EFFECTS** - 22 standard effects (jump, crossfade, blink)
+- **EFFECTS_MELK** - 16 MELK-specific effects
+- **EFFECTS_MELK_Ox** - 13 MELK-Ox series effects
+- **EFFECTS_DMRRBA** - 9 DMRRBA effects (flash, breath, candle)
+- **EFFECTS_STRIPX** - 228 advanced effects (music-reactive, chase, fire, fade, pulse, elevator, rainbow)
 
 **Multiple Devices**
 - Control multiple lights independently
