@@ -56,7 +56,6 @@ This integration currently supports the following device models:
 - **MELK-OC10**
 - **MELK-OF10**
 - **MELK-OG10**
-- **MELK-OG10W**
 - **LEDBLE**
 - **LED-** (Generic LED strips)
 - **JACKYLED**
