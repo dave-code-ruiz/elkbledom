@@ -1,0 +1,77 @@
+set_random_color:
+  name: Set Random Color
+  description: Set a random RGB color to the LED strip
+  fields:
+    entity_id:
+      name: Entity
+      description: The light entity to control
+      required: true
+      example: "light.led1"
+      selector:
+        entity:
+          domain: light
+    brightness:
+      name: Brightness
+      description: Brightness level (0-255)
+      required: false
+      default: 255
+      example: 200
+      selector:
+        number:
+          min: 0
+          max: 255
+          mode: slider
+
+set_rgb_color:
+  name: Set RGB Color
+  description: Set a specific RGB color to the LED strip
+  fields:
+    entity_id:
+      name: Entity
+      description: The light entity to control
+      required: true
+      example: "light.led1"
+      selector:
+        entity:
+          domain: light
+    r:
+      name: Red
+      description: Red value (0-255)
+      required: true
+      example: 255
+      selector:
+        number:
+          min: 0
+          max: 255
+          mode: slider
+    g:
+      name: Green
+      description: Green value (0-255)
+      required: true
+      example: 128
+      selector:
+        number:
+          min: 0
+          max: 255
+          mode: slider
+    b:
+      name: Blue
+      description: Blue value (0-255)
+      required: true
+      example: 64
+      selector:
+        number:
+          min: 0
+          max: 255
+          mode: slider
+    brightness:
+      name: Brightness
+      description: Brightness level (0-255)
+      required: false
+      default: 255
+      example: 200
+      selector:
+        number:
+          min: 0
+          max: 255
+          mode: slider
