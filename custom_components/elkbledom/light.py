@@ -242,7 +242,7 @@ class BLEDOMLight(RestoreEntity, LightEntity):
 
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
             self._attr_color_mode = ColorMode.COLOR_TEMP
-            if kwargs[ATTR_COLOR_TEMP_KELVIN] != self.color_temp:
+            if kwargs[ATTR_COLOR_TEMP_KELVIN] != self.color_temp_kelvin:
                 self._attr_effect = None
                 brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
                 await self._instance.set_color_temp_kelvin(kwargs[ATTR_COLOR_TEMP_KELVIN], brightness)
