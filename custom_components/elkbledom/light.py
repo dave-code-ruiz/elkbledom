@@ -41,9 +41,18 @@ class BLEDOMLight(RestoreEntity, LightEntity):
     def __init__(self, bledomInstance: BLEDOMInstance, name: str, entry_id: str) -> None:
         self._instance = bledomInstance
         self._entry_id = entry_id
-        self._attr_supported_color_modes = {ColorMode.RGB, ColorMode.COLOR_TEMP, ColorMode.WHITE}
+        has_white = bool(self._instance.model.get_white_cmd(self._instance.model_name, 255))
+        has_color_temp = bool(self._instance.model.get_color_temp_cmd(self._instance.model_name, 50, 50))
+        device_color_modes = {ColorMode.RGB}
+        self._attr_color_mode = ColorMode.RGB
+        if has_white:
+            device_color_modes.add(ColorMode.WHITE)
+            self._attr_color_mode = ColorMode.WHITE
+        if has_color_temp:
+            device_color_modes.add(ColorMode.COLOR_TEMP)
+            self._attr_color_mode = ColorMode.COLOR_TEMP
+        self._attr_supported_color_modes = device_color_modes
         self._attr_supported_features = LightEntityFeature.EFFECT
-        self._attr_color_mode = ColorMode.WHITE
         self._attr_name = name
         self._attr_effect = None
         self._attr_unique_id = self._instance.address
