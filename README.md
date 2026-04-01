@@ -206,7 +206,7 @@ This will scan for BLE devices and create a JSON file with technical information
 2. Attach the generated JSON file
 3. Include device name, brand, and purchase link if available
 
-For more advanced users, check out our [BLE Sniffing Guide](custom_components/elkbledom/sniffing_ble_device.md) to help reverse-engineer the protocol.
+For more advanced users, check out our [BLE Sniffing Guide](sniffing_ble_device.md) to help reverse-engineer the protocol.
 
 ---
 
