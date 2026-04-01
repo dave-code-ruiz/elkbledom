@@ -4,15 +4,24 @@
       "user": {
         "data": {
           "mac": "MAC-Adresse",
-          "name": "Name"
+          "name": "Anzeigename"
         },
         "title": "ELK-BLEDOM FastLink hinzufügen",
         "description": "Wählen Sie ein erkanntes Gerät aus oder geben Sie die MAC-Adresse manuell ein."
       },
+      "validate": {
+        "data": {
+          "retry": "Verbindung neu validieren?",
+          "flicker": "Hat das Gerät einmal aufgeleuchtet?"
+        },
+        "title": "ELK-BLEDOM FastLink Verbindung validieren"
+      },
       "manual": {
         "data": {
           "mac": "MAC-Adresse",
-          "name": "Name"
+          "name": "Anzeigename",
+          "model": "Modell",
+          "effects_class": "Effektklasse"
         },
         "title": "Bluetooth-MAC-Adresse eingeben"
       }
@@ -31,12 +40,14 @@
     "step": {
       "user": {
         "data": {
-          "reset": "Zurücksetzen beim Neustart von Home Assistant",
+          "reset": "Gerätestatus beim Neustart von Home Assistant zurücksetzen",
           "delay": "Verzögerung (Sekunden)",
-          "brightness_mode": "Helligkeitsmodus"
+          "brightness_mode": "Helligkeitsmodus",
+          "model": "Modell",
+          "effects_class": "Effektklasse"
         },
         "title": "ELK-BLEDOM FastLink-Optionen",
-        "description": "Wählen Sie, wie die Helligkeit auf Ihr Gerät angewendet wird."
+        "description": "Wählen Sie Ihre gerätespezifischen Einstellungen."
       }
     }
   }
