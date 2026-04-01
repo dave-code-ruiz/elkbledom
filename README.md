@@ -76,6 +76,7 @@ This integration currently supports the following device models:
 -  [Amazon LED Strips](https://www.amazon.es/gp/product/B00VFME0Q2) (Example)
 -  [LED Light Bar](https://www.amazon.es/bedee-Regulable-Inteligente-Bluetooth-Dormitorio/dp/B0BNPMGR1H) (Example)
 -  [MELK Strip](https://www.amazon.es/distancia-Bluetooth-aplicaci%C3%B3n-sincronizaci%C3%B3n-habitaci%C3%B3n/dp/B09VC77GCZ) (Example)
+-  [ELK BTC Strip](https://www.amazon.com/dp/B0F5PMW91X?) (Example)
 - Search for "ELK-BLEDOM", "MELK LED", or "Bluetooth LED Strip" on your local Amazon
 
 ---
