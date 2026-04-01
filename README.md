@@ -56,6 +56,7 @@ This integration currently supports the following device models:
 - **MELK-OC10**
 - **MELK-OF10**
 - **MELK-OG10**
+- **MELK-OA21**
 - **LEDBLE**
 - **LED-**
 - **JACKYLED**
