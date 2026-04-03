@@ -229,7 +229,6 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             LOGGER.debug(f"No previous state found for {self.name}, setting defaults")
             self._instance._is_on = False
             self._instance._brightness = 255
-            self._attr_color_mode = ColorMode.WHITE
 
     def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
         rgb = match_max_scale((255,), color)
@@ -242,7 +241,6 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             await self._instance.turn_on()
             if self._instance.reset:
                 LOGGER.debug("Change color to white to reset led strip when other infrared control interact")
-                self._attr_color_mode = ColorMode.WHITE
                 self._attr_effect = None
                 await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250), is_base_color=False)
                 if ATTR_WHITE in kwargs:
