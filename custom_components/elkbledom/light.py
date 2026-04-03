@@ -41,9 +41,21 @@ class BLEDOMLight(RestoreEntity, LightEntity):
     def __init__(self, bledomInstance: BLEDOMInstance, name: str, entry_id: str) -> None:
         self._instance = bledomInstance
         self._entry_id = entry_id
-        self._attr_supported_color_modes = {ColorMode.RGB, ColorMode.COLOR_TEMP, ColorMode.WHITE}
+        has_white = bool(self._instance.model.get_white_cmd(self._instance.model_name, 255))
+        has_color_temp = bool(self._instance.model.get_color_temp_cmd(self._instance.model_name, 50, 50))
+        has_rgb = bool(self._instance.model.get_color_cmd(self._instance.model_name, 255, 255, 255))
+        device_color_modes = set()
+        if has_white:
+            device_color_modes.add(ColorMode.WHITE)
+            self._attr_color_mode = ColorMode.WHITE
+        if has_color_temp:
+            device_color_modes.add(ColorMode.COLOR_TEMP)
+            self._attr_color_mode = ColorMode.COLOR_TEMP
+        if has_rgb:
+            device_color_modes.add(ColorMode.RGB)
+            self._attr_color_mode = ColorMode.RGB
+        self._attr_supported_color_modes = device_color_modes
         self._attr_supported_features = LightEntityFeature.EFFECT
-        self._attr_color_mode = ColorMode.WHITE
         self._attr_name = name
         self._attr_effect = None
         self._attr_unique_id = self._instance.address
@@ -217,7 +229,6 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             LOGGER.debug(f"No previous state found for {self.name}, setting defaults")
             self._instance._is_on = False
             self._instance._brightness = 255
-            self._attr_color_mode = ColorMode.WHITE
 
     def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
         rgb = match_max_scale((255,), color)
@@ -230,7 +241,6 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             await self._instance.turn_on()
             if self._instance.reset:
                 LOGGER.debug("Change color to white to reset led strip when other infrared control interact")
-                self._attr_color_mode = ColorMode.WHITE
                 self._attr_effect = None
                 await self._instance.set_color(self._transform_color_brightness((255, 255, 255), 250), is_base_color=False)
                 if ATTR_WHITE in kwargs:
