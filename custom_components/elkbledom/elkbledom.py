@@ -22,14 +22,6 @@ from .model import Model
 
 LOGGER = logging.getLogger(__name__)
 
-#gatttool -i hci0 -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e00040100000000ef POWERON
-# sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004f00001ff00ef # POWER ON
-# sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e000503ff000000ef # RED
-# sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0005030000ff00ef # BLUE
-# sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e00050300ff0000ef # GREEN
-# sudo gatttool -b be:59:7a:00:08:d5 --char-write-req -a 0x0009 -n 7e0004000000ff00ef # POWER OFF
-
-
 DEFAULT_ATTEMPTS = 3
 #DISCONNECT_DELAY = 120
 BLEAK_BACKOFF_TIME = 0.25
@@ -396,13 +388,10 @@ class BLEDOMInstance:
             await self.set_color((rr, gg, bb), is_base_color=False)
             LOGGER.debug("%s: Brightness set via RGB scaling: %d%% (Base RGB: %d,%d,%d -> Scaled: %d,%d,%d)", self.name, percent, r, g, b, rr, gg, bb)
 
-        async def write_native_then_rgb():
+        async def write_native():
             """Use native brightness command then set base color."""
             brightness_cmd = self._model.get_brightness_cmd(self._model_name, percent)
             await self._write(brightness_cmd)
-            await asyncio.sleep(0.05)
-            # Use base color, not scaled
-            await self.set_color((r, g, b), is_base_color=False)
             LOGGER.debug("%s: Brightness set via native command: %d%%", self.name, percent)
 
         try:
@@ -411,11 +400,11 @@ class BLEDOMInstance:
                 await write_rgb_scaled()
             elif mode == "native":
                 # Always use native brightness command
-                await write_native_then_rgb()
+                await write_native()
             else:  # auto
                 # Try native first, fallback to RGB on error
                 try:
-                    await write_native_then_rgb()
+                    await write_native()
                 except Exception as e:
                     LOGGER.warning("%s: Native brightness failed, fallback to RGB: %s", self.name, e)
                     await write_rgb_scaled()
