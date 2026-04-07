@@ -34,7 +34,7 @@ def load_models_json():
     for path in possible_paths:
         if path.exists():
             print(f"Loading commands from: {path}")
-            with open(path, 'r') as f:
+            with open(path, 'r', encoding="utf-8") as f:
                 models_data = json.load(f)
             break
     
@@ -1155,7 +1155,7 @@ class LEDStripDiscovery:
         filename = f"led_discovery_{info.get('address', 'unknown').replace(':', '')}_{timestamp}.json"
         
         try:
-            with open(filename, 'w') as f:
+            with open(filename, 'w', encoding="utf-8") as f:
                 json.dump(self.test_results, f, indent=2)
             print(f"\nReport saved to: {filename}")
         except Exception as e:
