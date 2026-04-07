@@ -44,6 +44,8 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         has_white = bool(self._instance.model.get_white_cmd(self._instance.model_name, 255))
         has_color_temp = bool(self._instance.model.get_color_temp_cmd(self._instance.model_name, 50, 50))
         has_rgb = bool(self._instance.model.get_color_cmd(self._instance.model_name, 255, 255, 255))
+        has_effect = bool(self._instance.model.get_effect_cmd(self._instance.model_name, 1))
+        self._has_effect_speed = bool(self._instance.model.get_effect_speed_cmd(self._instance.model_name, 128))
         device_color_modes = set()
         if has_white:
             device_color_modes.add(ColorMode.WHITE)
@@ -55,7 +57,7 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             device_color_modes.add(ColorMode.RGB)
             self._attr_color_mode = ColorMode.RGB
         self._attr_supported_color_modes = device_color_modes
-        self._attr_supported_features = LightEntityFeature.EFFECT
+        self._attr_supported_features = LightEntityFeature.EFFECT if has_effect else LightEntityFeature(0)
         self._attr_name = name
         self._attr_effect = None
         self._attr_unique_id = self._instance.address
@@ -109,9 +111,9 @@ class BLEDOMLight(RestoreEntity, LightEntity):
     @property
     def extra_state_attributes(self):
         """Return entity specific state attributes."""
-        return {
-            "effect_speed": self._instance.effect_speed,
-        }
+        if self._has_effect_speed:
+            return {"effect_speed": self._instance.effect_speed}
+        return {}
 
     @property
     def rgb_color(self):

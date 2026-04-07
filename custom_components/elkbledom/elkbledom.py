@@ -218,6 +218,8 @@ class BLEDOMInstance:
             
     async def _write(self, data: bytearray):
         """Send command to device and read response."""
+        if not data:
+            return
         await self._ensure_connected()
         await self._write_while_connected(data)
 
