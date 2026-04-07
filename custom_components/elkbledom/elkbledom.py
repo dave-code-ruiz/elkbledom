@@ -100,7 +100,7 @@ class DeviceData():
     def bledevice(self) -> BLEDevice:
         return self._bledevice
     
-    def update_device(self):
+    def update_device(self) -> None:
         #TODO for discovery_info in async_last_service_info(self._hass, self._address):
         for discovery_info in async_discovered_service_info(self._hass):
             if discovery_info.address == self._address:
@@ -203,7 +203,7 @@ class BLEDOMInstance:
             LOGGER.warning("Unknown model for device %s", self._device.name)
             self._model_name = "ELK-BLEDOM"  # Default fallback
     
-    async def apply_brightness_mode(self, mode: str):
+    async def apply_brightness_mode(self, mode: str) -> None:
         """Apply new brightness mode and reconnect if needed."""
         mode = (mode or "auto").lower()
         if mode not in ("auto", "rgb", "native"):
@@ -297,7 +297,7 @@ class BLEDOMInstance:
         return self._model
     
     @retry_bluetooth_connection_error
-    async def set_color_temp(self, value: int):
+    async def set_color_temp(self, value: int) -> None:
         if value > 100:
             value = 100
         warm = value
@@ -307,7 +307,7 @@ class BLEDOMInstance:
         self._color_temp = warm
 
     @retry_bluetooth_connection_error
-    async def set_color_temp_kelvin(self, value: int, brightness: int):
+    async def set_color_temp_kelvin(self, value: int, brightness: int) -> None:
         # White colours are represented by colour temperature percentage from 0x0 to 0x64 from warm to cool
         # Warm (0x0) is only the warm white LED, cool (0x64) is only the white LED and then a mixture between the two
         self._color_temp_kelvin = value
@@ -355,7 +355,7 @@ class BLEDOMInstance:
         # Note: _rgb_color is set in set_color, but _rgb_color_base is preserved
 
     @retry_bluetooth_connection_error
-    async def set_color(self, rgb: Tuple[int, int, int], is_base_color: bool = False):
+    async def set_color(self, rgb: Tuple[int, int, int], is_base_color: bool = False) -> None:
         r, g, b = rgb
         color_cmd = self._model.get_color_cmd(self._model_name, r, g, b)
         await self._write(color_cmd)
@@ -365,7 +365,7 @@ class BLEDOMInstance:
             self._rgb_color_base = rgb
 
     @retry_bluetooth_connection_error
-    async def set_white(self, intensity: int):
+    async def set_white(self, intensity: int) -> None:
         if intensity is None:
             intensity = 255  # Valor por defecto si no se especifica
         white_cmd = self._model.get_white_cmd(self._model_name, intensity)
@@ -373,7 +373,7 @@ class BLEDOMInstance:
         self._brightness = intensity
 
     @retry_bluetooth_connection_error
-    async def set_brightness(self, intensity: int):
+    async def set_brightness(self, intensity: int) -> None:
         """Set brightness with configurable mode (auto/rgb/native)."""
         self._brightness = max(1, min(int(intensity), 255))
         percent = round(self._brightness * 100 / 255)
@@ -414,19 +414,19 @@ class BLEDOMInstance:
             LOGGER.error("%s: Error setting brightness: %s", self.name, e)  
             
     @retry_bluetooth_connection_error
-    async def set_effect_speed(self, value: int):
+    async def set_effect_speed(self, value: int) -> None:
         effect_speed = self._model.get_effect_speed_cmd(self._model_name, value)
         await self._write(effect_speed)
         self._effect_speed = value
 
     @retry_bluetooth_connection_error
-    async def set_effect(self, value: int):
+    async def set_effect(self, value: int) -> None:
         effect = self._model.get_effect_cmd(self._model_name, value)
         await self._write(effect)
         self._effect = value
 
     @retry_bluetooth_connection_error
-    async def set_mic_effect(self, value: int):
+    async def set_mic_effect(self, value: int) -> None:
         """Set microphone effect (0x80-0x87)."""
         if not 0x80 <= value <= 0x87:
             LOGGER.warning("Invalid mic effect value: 0x%02x, must be between 0x80 and 0x87", value)
@@ -436,7 +436,7 @@ class BLEDOMInstance:
         LOGGER.debug("Mic effect set to: 0x%02x", value)
 
     @retry_bluetooth_connection_error
-    async def set_mic_sensitivity(self, value: int):
+    async def set_mic_sensitivity(self, value: int) -> None:
         """Set microphone sensitivity (0-100)."""
         if not 0 <= value <= 100:
             LOGGER.warning("Invalid mic sensitivity value: %d, must be between 0 and 100", value)
@@ -446,33 +446,33 @@ class BLEDOMInstance:
         LOGGER.debug("Mic sensitivity set to: %d", value)
 
     @retry_bluetooth_connection_error
-    async def enable_mic(self):
+    async def enable_mic(self) -> None:
         """Enable external microphone."""
         await self._write([0x7e, 0x04, 0x07, 0x01, 0xff, 0xff, 0xff, 0x00, 0xef])
         self._mic_enabled = True
         LOGGER.debug("External microphone enabled")
 
     @retry_bluetooth_connection_error
-    async def disable_mic(self):
+    async def disable_mic(self) -> None:
         """Disable external microphone."""
         await self._write([0x7e, 0x04, 0x07, 0x00, 0xff, 0xff, 0xff, 0x00, 0xef])
         self._mic_enabled = False
         LOGGER.debug("External microphone disabled")
 
     @retry_bluetooth_connection_error
-    async def turn_on(self):
+    async def turn_on(self) -> None:
         cmd = self._model.get_turn_on_cmd(self._model_name)
         await self._write(cmd)
         self._is_on = True
 
     @retry_bluetooth_connection_error
-    async def turn_off(self):
+    async def turn_off(self) -> None:
         cmd = self._model.get_turn_off_cmd(self._model_name)
         await self._write(cmd)
         self._is_on = False
 
     @retry_bluetooth_connection_error
-    async def set_scheduler_on(self, days: int, hours: int, minutes: int, enabled: bool):
+    async def set_scheduler_on(self, days: int, hours: int, minutes: int, enabled: bool) -> None:
         if enabled:
             value = days + 0x80
         else:
@@ -480,7 +480,7 @@ class BLEDOMInstance:
         await self._write([0x7e, 0x00, 0x82, hours, minutes, 0x00, 0x00, value, 0xef])
 
     @retry_bluetooth_connection_error
-    async def set_scheduler_off(self, days: int, hours: int, minutes: int, enabled: bool):
+    async def set_scheduler_off(self, days: int, hours: int, minutes: int, enabled: bool) -> None:
         if enabled:
             value = days + 0x80
         else:
@@ -488,7 +488,7 @@ class BLEDOMInstance:
         await self._write([0x7e, 0x00, 0x82, hours, minutes, 0x00, 0x01, value, 0xef])
 
     @retry_bluetooth_connection_error
-    async def sync_time(self):
+    async def sync_time(self) -> None:
         date = datetime.date.today()
         year, week_num, day_of_week = date.isocalendar()
         now = datetime.datetime.now()
@@ -502,11 +502,11 @@ class BLEDOMInstance:
         await self._write(cmd)
 
     @retry_bluetooth_connection_error
-    async def custom_time(self, hour: int, minute: int, second: int, day_of_week: int):
+    async def custom_time(self, hour: int, minute: int, second: int, day_of_week: int) -> None:
         cmd = self._model.get_custom_time_cmd(self._model_name, hour, minute, second, day_of_week)
         await self._write(cmd)
 
-    async def query_state(self):
+    async def query_state(self) -> None:
         """Query device state using model-specific command."""
         if not self._client or not self._client.is_connected:
             return
@@ -521,7 +521,7 @@ class BLEDOMInstance:
                 LOGGER.debug("%s: Query command failed: %s", self.name, e)
 
     @retry_bluetooth_connection_error
-    async def update(self):
+    async def update(self) -> None:
         try:
             await self._ensure_connected()
 

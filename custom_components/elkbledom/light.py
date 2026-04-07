@@ -32,7 +32,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_MAC): cv.string
 })
 
-async def async_setup_entry(hass, config_entry, async_add_devices):
+async def async_setup_entry(hass, config_entry, async_add_devices) -> None:
     instance = hass.data[DOMAIN][config_entry.entry_id]
     await instance.update()
     async_add_devices([BLEDOMLight(instance, config_entry.data["name"], config_entry.entry_id)])
@@ -134,7 +134,7 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         )
 
     @property
-    def should_poll(self):
+    def should_poll(self) -> bool:
         """No polling needed for a demo light."""
         return False
 

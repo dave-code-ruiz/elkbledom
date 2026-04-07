@@ -198,7 +198,7 @@ class LEDStripDiscovery:
         
         return self.discovered_devices
     
-    def display_devices(self):
+    def display_devices(self) -> None:
         """Displays discovered devices"""
         if not self.discovered_devices:
             print("No BLE devices found")
@@ -519,7 +519,7 @@ class LEDStripDiscovery:
             print(f"   [ERROR] {e}")
             return False
     
-    async def test_power_commands(self, device: BLEDevice, char_uuid: str):
+    async def test_power_commands(self, device: BLEDevice, char_uuid: str) -> None:
         """Tests on/off commands"""
         print(f"\n{'='*60}")
         print("TESTING ON/OFF COMMANDS")
@@ -674,7 +674,7 @@ class LEDStripDiscovery:
                     print("\nMax retries reached, giving up on power command tests")
                     return
     
-    async def test_color_commands(self, device: BLEDevice, char_uuid: str):
+    async def test_color_commands(self, device: BLEDevice, char_uuid: str) -> None:
         """Tests RGB color commands"""
         print(f"\n{'='*60}")
         print("TESTING RGB COLOR COMMANDS")
@@ -735,7 +735,7 @@ class LEDStripDiscovery:
         except Exception as e:
             print(f"\nError during tests: {e}")
     
-    async def test_white_commands(self, device: BLEDevice, char_uuid: str):
+    async def test_white_commands(self, device: BLEDevice, char_uuid: str) -> None:
         """Tests white light commands"""
         print(f"\n{'='*60}")
         print("TESTING WHITE LIGHT COMMANDS")
@@ -811,7 +811,7 @@ class LEDStripDiscovery:
                     print("\nMax retries reached, skipping white command tests")
                     return
     
-    async def test_color_temp_commands(self, device: BLEDevice, char_uuid: str):
+    async def test_color_temp_commands(self, device: BLEDevice, char_uuid: str) -> None:
         """Tests color temperature commands"""
         print(f"\n{'='*60}")
         print("TESTING COLOR TEMPERATURE COMMANDS")
@@ -887,7 +887,7 @@ class LEDStripDiscovery:
                     print("\nMax retries reached, skipping color temp command tests")
                     return
     
-    async def test_query_commands(self, device: BLEDevice, char_uuid: str, read_uuid: Optional[str] = None):
+    async def test_query_commands(self, device: BLEDevice, char_uuid: str, read_uuid: Optional[str] = None) -> None:
         """Test query/status commands to find which one works"""
         print(f"\n{'='*60}")
         print("QUERY/STATUS COMMAND TESTING")
@@ -979,7 +979,7 @@ class LEDStripDiscovery:
                     print("\nMax retries reached, skipping query command tests")
                     return
 
-    async def test_custom_commands(self, device: BLEDevice, char_uuid: str):
+    async def test_custom_commands(self, device: BLEDevice, char_uuid: str) -> None:
         """Allows user to test their own commands"""
         print(f"\n{'='*60}")
         print("CUSTOM COMMAND TESTING")
@@ -1029,7 +1029,7 @@ class LEDStripDiscovery:
         except Exception as e:
             print(f"\nError during tests: {e}")
     
-    def generate_report(self):
+    def generate_report(self) -> None:
         """Generates a complete results report"""
         print(f"\n{'='*60}")
         print("LED STRIP DISCOVERY REPORT")
@@ -1164,7 +1164,7 @@ class LEDStripDiscovery:
         print(f"\n{'='*60}\n")
 
 
-async def main():
+async def main() -> None:
     """Main function"""
     discovery = LEDStripDiscovery()
     
