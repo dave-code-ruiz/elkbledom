@@ -37,7 +37,7 @@ class cDelegate(DefaultDelegate):
     def __init__(self):
         DefaultDelegate.__init__(self)
 
-    def handleDiscovery(self, dev, isNewDev, isNewData):
+    def handleDiscovery(self, dev, isNewDev, isNewData) -> None:
         if isNewDev:
             print("Discovered device", dev.addr)
         elif isNewData:
@@ -83,19 +83,19 @@ class UtopicDevice():
     def getDevice(self):
         return self.utopicdevice
 
-    def setWriteCharact(self, writeChar):
+    def setWriteCharact(self, writeChar) -> None:
         self.writeChar = writeChar
 
     def getWriteCharact(self):
         return self.writeChar
 
-    def setReadCharact(self, readChar):
+    def setReadCharact(self, readChar) -> None:
         self.readChar = readChar
 
     def getReadCharact(self):
         return self.readChar
 
-    def setNotifyCharact(self, notChar):
+    def setNotifyCharact(self, notChar) -> None:
         self.notChar = notChar
 
     def getNotifyCharact(self):
@@ -120,7 +120,7 @@ class BLEMagic(DefaultDelegate):
         self._bluepy_thread.daemon = True
         self._bluepy_thread.start()
 
-    def handleNotification(self, cHandle, data):
+    def handleNotification(self, cHandle, data) -> None:
         """This is the notification delegate function from DefaultDelegate
         """
         print("\nReceived Notification: %s Handle: %s",str(data), cHandle)
@@ -176,7 +176,7 @@ class BLEMagic(DefaultDelegate):
                 print("not read")
             self.utopicdevices.append(utopicdevice)
     
-    def kv2dict(kvstr, sep=";"):
+    def kv2dict(kvstr, sep: str=";"):
         result = {}
         for x in kvstr.split(sep, 50):
             (k, v) = x.split("=", 2)
@@ -189,7 +189,7 @@ class BLEMagic(DefaultDelegate):
     def getDevices(self):
         return self.utopicdevices
 
-    def onDataReceived(self, data):
+    def onDataReceived(self, data) -> None:
         #String data = new String(dataRaw);
         if(data.contains("DEV_KEY:")):
             key = data.substring(8,data.length())
@@ -223,7 +223,7 @@ class BLEMagic(DefaultDelegate):
             # byte[] key = encryp.encrypt(counter, operation, settings);
             # return key;
 
-    def send(self, message):
+    def send(self, message) -> None:
         """Call this function to send a BLE message over the UART service
         :param message: Message to send
         :return:

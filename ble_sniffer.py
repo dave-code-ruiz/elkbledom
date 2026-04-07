@@ -20,7 +20,7 @@ class BLESniffer:
         self.captured_commands = []
         self.log_file = f"ble_capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
         
-    def log(self, message: str, also_print: bool = True):
+    def log(self, message: str, also_print: bool = True) -> None:
         """Log message to file and optionally print"""
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         log_entry = f"[{timestamp}] {message}"
@@ -44,7 +44,7 @@ class BLESniffer:
         print(f"Device '{device_name}' not found")
         return None
     
-    async def sniff_traffic(self, address: str):
+    async def sniff_traffic(self, address: str) -> None:
         """Connect and monitor all BLE traffic"""
         print(f"\n{'='*70}")
         print(f"BLE TRAFFIC SNIFFER")
@@ -142,7 +142,7 @@ class BLESniffer:
             print("This is normal for many LED strips.")
             print("\nUse command_tester.py instead to actively test commands.\n")
 
-async def main():
+async def main() -> None:
     sniffer = BLESniffer()
     
     # Allow custom device name

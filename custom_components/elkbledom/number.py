@@ -75,7 +75,7 @@ class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
         )
 
     @property
-    def entity_info(self):
+    def entity_info(self) -> None:
         NumberEntityDescription(
             key=self.name,
             native_max_value=255,
