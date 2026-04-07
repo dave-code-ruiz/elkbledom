@@ -25,7 +25,7 @@ class BLESniffer:
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         log_entry = f"[{timestamp}] {message}"
         
-        with open(self.log_file, 'a') as f:
+        with open(self.log_file, 'a', encoding="utf-8") as f:
             f.write(log_entry + '\n')
         
         if also_print:

@@ -104,7 +104,7 @@ async def main() -> None:
                 notes.append(input("Note:"))
                 packet_vals.append(val)
         '''
-    with open('packet_notes.txt', 'w') as outfile:
+    with open('packet_notes.txt', 'w', encoding="utf-8") as outfile:
         for i in range(0,len(notes)):
             outfile.write(f"{notes[i]} = {packet_vals[i]}\n")
     
