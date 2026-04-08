@@ -47,7 +47,8 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         has_effect = bool(self._instance.model.get_effect_cmd(self._instance.model_name, 1))
         self._has_effect_speed = bool(self._instance.model.get_effect_speed_cmd(self._instance.model_name, 128))
         device_color_modes = set()
-        if has_white:
+        if has_white and not has_rgb:
+            # WHITE and RGB cannot coexist in HA supported_color_modes
             device_color_modes.add(ColorMode.WHITE)
             self._attr_color_mode = ColorMode.WHITE
         if has_color_temp:

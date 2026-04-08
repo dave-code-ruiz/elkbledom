@@ -27,10 +27,10 @@ async def async_setup_entry(
 ) -> None:
     instance = hass.data[DOMAIN][config_entry.entry_id]
     await instance.update()
-    async_add_entities([
-        BLEDOMEffectSpeed(instance, "Effect Speed " + config_entry.data["name"], config_entry.entry_id),
-        BLEDOMMicSensitivity(instance, "Mic Sensitivity " + config_entry.data["name"], config_entry.entry_id)
-    ])
+    entities = [BLEDOMMicSensitivity(instance, "Mic Sensitivity " + config_entry.data["name"], config_entry.entry_id)]
+    if instance.model.get_effect_speed_cmd(instance.model_name, 128):
+        entities.append(BLEDOMEffectSpeed(instance, "Effect Speed " + config_entry.data["name"], config_entry.entry_id))
+    async_add_entities(entities)
 
 class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
     """Effect Speed entity"""
