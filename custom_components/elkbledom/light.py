@@ -189,8 +189,11 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             if ATTR_RGB_COLOR in last_state.attributes and last_state.attributes[ATTR_RGB_COLOR] is not None:
                 try:
                     self._instance._rgb_color = tuple(last_state.attributes[ATTR_RGB_COLOR])
-                    self._attr_color_mode = ColorMode.RGB
-                    LOGGER.debug(f"Restored RGB color: {self._instance._rgb_color}")
+                    if ColorMode.RGB in self._attr_supported_color_modes:
+                        self._attr_color_mode = ColorMode.RGB
+                        LOGGER.debug(f"Restored RGB color: {self._instance._rgb_color}")
+                    else:
+                        LOGGER.debug("RGB color restored but model does not support RGB mode, ignoring color_mode")
                 except (TypeError, ValueError) as e:
                     LOGGER.warning(f"Invalid RGB color data, skipping: {e}")
             
@@ -198,15 +201,21 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             elif ATTR_COLOR_TEMP_KELVIN in last_state.attributes and last_state.attributes[ATTR_COLOR_TEMP_KELVIN] is not None:
                 try:
                     self._instance._color_temp_kelvin = last_state.attributes[ATTR_COLOR_TEMP_KELVIN]
-                    self._attr_color_mode = ColorMode.COLOR_TEMP
-                    LOGGER.debug(f"Restored color temp: {self._instance._color_temp_kelvin}K")
+                    if ColorMode.COLOR_TEMP in self._attr_supported_color_modes:
+                        self._attr_color_mode = ColorMode.COLOR_TEMP
+                        LOGGER.debug(f"Restored color temp: {self._instance._color_temp_kelvin}K")
+                    else:
+                        LOGGER.debug("COLOR_TEMP restored but model does not support it, ignoring color_mode")
                 except (TypeError, ValueError) as e:
                     LOGGER.warning(f"Invalid color temperature data, skipping: {e}")
             
-            # Restore white mode
+            # Restore white mode — only if model actually supports WHITE
             elif last_state.attributes.get("color_mode") == ColorMode.WHITE:
-                self._attr_color_mode = ColorMode.WHITE
-                LOGGER.debug("Restored color mode: WHITE")
+                if ColorMode.WHITE in self._attr_supported_color_modes:
+                    self._attr_color_mode = ColorMode.WHITE
+                    LOGGER.debug("Restored color mode: WHITE")
+                else:
+                    LOGGER.debug("Previous color_mode was WHITE but model does not support it, keeping default")
             
             # Restore effect
             if ATTR_EFFECT in last_state.attributes:
@@ -232,6 +241,15 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             LOGGER.debug(f"No previous state found for {self.name}, setting defaults")
             self._instance._is_on = False
             self._instance._brightness = 255
+
+        # Final safety: ensure color_mode is always valid for this model
+        if self._attr_color_mode not in self._attr_supported_color_modes:
+            fallback = next(iter(self._attr_supported_color_modes), ColorMode.ONOFF)
+            LOGGER.warning(
+                "%s: color_mode '%s' not in supported %s after restore, resetting to '%s'",
+                self.name, self._attr_color_mode, self._attr_supported_color_modes, fallback
+            )
+            self._attr_color_mode = fallback
 
     def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
         rgb = match_max_scale((255,), color)
@@ -261,7 +279,8 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 await self._instance.set_color_temp_kelvin(kwargs[ATTR_COLOR_TEMP_KELVIN], brightness)
 
         if ATTR_WHITE in kwargs:
-            self._attr_color_mode = ColorMode.WHITE
+            if ColorMode.WHITE in self._attr_supported_color_modes:
+                self._attr_color_mode = ColorMode.WHITE
             self._attr_effect = None
             await self._instance.set_color(self._transform_color_brightness((255, 255, 255), kwargs[ATTR_WHITE]), is_base_color=False)
             await self._instance.set_white(kwargs[ATTR_WHITE])
