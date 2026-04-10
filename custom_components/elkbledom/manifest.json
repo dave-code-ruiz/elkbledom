@@ -2,21 +2,42 @@
   "domain": "elkbledom",
   "name": "ElkBLEDOM",
   "bluetooth": [
-      { "local_name": "ELK*" },
-      { "local_name": "XROCKER*" },
-      { "local_name": "MELK*" },
-      { "local_name": "LEDBLE*" },
-      { "local_name": "LED-*" },
-      { "local_name": "JACKYLED*" },
-      { "local_name": "DMRRBA*" }      
-    ],
-  "codeowners": ["@dave-code-ruiz"],
+    {
+      "local_name": "ELK*"
+    },
+    {
+      "local_name": "XROCKER*"
+    },
+    {
+      "local_name": "MELK*"
+    },
+    {
+      "local_name": "LEDBLE*"
+    },
+    {
+      "local_name": "LED-*"
+    },
+    {
+      "local_name": "JACKYLED*"
+    },
+    {
+      "local_name": "DMRRBA*"
+    }
+  ],
+  "codeowners": [
+    "@dave-code-ruiz"
+  ],
   "config_flow": true,
-  "dependencies": ["bluetooth"],
+  "dependencies": [
+    "bluetooth"
+  ],
   "documentation": "https://github.com/dave-code-ruiz/elkbledom",
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/dave-code-ruiz/elkbledom/issues",
-  "requirements": ["bleak-retry-connector>=3.5.0","bleak>=0.22.2"],
-  "version": "1.5.3"
+  "requirements": [
+    "bleak-retry-connector>=3.5.0",
+    "bleak>=0.22.2"
+  ],
+  "version": "1.6.1"
 }
