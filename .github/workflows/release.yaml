@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
@@ -55,9 +57,9 @@ jobs:
 
       - name: Update manifest.json version
         run: |
-          perl -0pi -e 's/^(\s*"version"\s*:\s*")[^"]+(".*)$/${1}${ENV{"NEW_VERSION"}}$2/m' custom_components/elkbledom/manifest.json
-        env:
-          NEW_VERSION: ${{ steps.bump.outputs.version }}
+          jq --arg v "${{ steps.bump.outputs.version }}" '.version = $v' \
+            custom_components/elkbledom/manifest.json > /tmp/manifest.json
+          mv /tmp/manifest.json custom_components/elkbledom/manifest.json
 
       - name: Commit and push changes
         run: |
