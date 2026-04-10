@@ -21,7 +21,6 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     instance = hass.data[DOMAIN][config_entry.entry_id]
-    await instance.update()
     async_add_entities([
         BLEDOMMicEffect(instance, "Mic Effect " + config_entry.data["name"], config_entry.entry_id),
         BLEDOMBrightnessModeSelect(instance, "Brightness Mode " + config_entry.data["name"], config_entry, config_entry.entry_id)

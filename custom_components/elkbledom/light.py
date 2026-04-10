@@ -34,7 +34,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 async def async_setup_entry(hass, config_entry, async_add_devices) -> None:
     instance = hass.data[DOMAIN][config_entry.entry_id]
-    await instance.update()
     async_add_devices([BLEDOMLight(instance, config_entry.data["name"], config_entry.entry_id)])
 
 class BLEDOMLight(RestoreEntity, LightEntity):
@@ -268,15 +267,30 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                     await self._instance.set_white(kwargs[ATTR_WHITE])
 
         
-        if ATTR_BRIGHTNESS in kwargs and kwargs[ATTR_BRIGHTNESS] != self.brightness and self.rgb_color != None:
-            await self._instance.set_brightness(kwargs[ATTR_BRIGHTNESS])
+        if ATTR_BRIGHTNESS in kwargs and kwargs[ATTR_BRIGHTNESS] != self.brightness:
+            brightness = kwargs[ATTR_BRIGHTNESS]
+            if self._attr_color_mode == ColorMode.RGB and self.rgb_color is not None:
+                # RGB mode: use native brightness or scale RGB
+                await self._instance.set_brightness(brightness)
+            elif self._attr_color_mode == ColorMode.COLOR_TEMP:
+                # COLOR_TEMP mode: re-apply current temp at new brightness
+                # (also handled below if ATTR_COLOR_TEMP_KELVIN is present, but
+                #  if only brightness changes we must apply it here)
+                current_temp = self.color_temp_kelvin
+                if current_temp and ATTR_COLOR_TEMP_KELVIN not in kwargs:
+                    await self._instance.set_color_temp_kelvin(current_temp, brightness)
+            elif self._attr_color_mode == ColorMode.WHITE:
+                # WHITE mode: brightness is the white channel intensity
+                if ATTR_WHITE not in kwargs:
+                    await self._instance.set_white(brightness)
 
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
             self._attr_color_mode = ColorMode.COLOR_TEMP
-            if kwargs[ATTR_COLOR_TEMP_KELVIN] != self.color_temp_kelvin:
+            new_temp = kwargs[ATTR_COLOR_TEMP_KELVIN]
+            new_brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
+            if new_temp != self.color_temp_kelvin or ATTR_BRIGHTNESS in kwargs:
                 self._attr_effect = None
-                brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
-                await self._instance.set_color_temp_kelvin(kwargs[ATTR_COLOR_TEMP_KELVIN], brightness)
+                await self._instance.set_color_temp_kelvin(new_temp, new_brightness)
 
         if ATTR_WHITE in kwargs:
             if ColorMode.WHITE in self._attr_supported_color_modes:
