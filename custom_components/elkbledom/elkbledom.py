@@ -317,39 +317,45 @@ class BLEDOMInstance:
             value = min_temp
         if value > max_temp:
             value = max_temp
-        
+
         # Ensure brightness is not None before using it
         if brightness is None:
             brightness = self._brightness if self._brightness is not None else 255
         self._brightness = brightness
-        
-        # 
-        # if value > 5000:
-        #     # For high color temperatures, use white mode
-        #     intensity = max(0, min(int(brightness), 255))
-        #     percent = int(intensity * 100 / 255)
-        #     await self.set_white(percent)
-        
-        # Standard RGB-emulation for color temperature
-        # color_temp_percent = int(((value - min_temp) * 100) / (max_temp - min_temp))
-        # brightness_percent = int(brightness * 100 / 255)
-        
-        # Use RGB emulation for wider color temperature range
-        warm = (255, 138, 18)  # Warm white ~1800K
-        cool = (180, 220, 255)  # Cool white ~7000K
+
+        # Clamp t to [0, 1]: 0 = warmest (min_temp), 1 = coolest (max_temp)
         t = (value - min_temp) / (max_temp - min_temp) if max_temp > min_temp else 1.0
-        
+
+        # Prefer native color_temp command if the model supports it
+        native_ct_cmd = self._model.get_color_temp_cmd(self._model_name, 50, 50)
+        if native_ct_cmd:
+            # Convert kelvin → warm/cold percentages (0-100)
+            # warm=100/cold=0 at min_temp (warmest), warm=0/cold=100 at max_temp (coolest)
+            warm_pct = int((1.0 - t) * 100)
+            cold_pct = int(t * 100)
+            cmd = self._model.get_color_temp_cmd(self._model_name, warm_pct, cold_pct)
+            await self._write(cmd)
+            # Set brightness via white channel if model supports it
+            white_cmd = self._model.get_white_cmd(self._model_name, brightness)
+            if white_cmd:
+                await self._write(white_cmd)
+            return
+
+        # Fallback: RGB emulation for models without native color_temp command
+        warm = (255, 138, 18)   # Warm white ~1800K
+        cool = (180, 220, 255)  # Cool white ~7000K
+
         r = int(warm[0] + (cool[0] - warm[0]) * t)
         g = int(warm[1] + (cool[1] - warm[1]) * t)
         b = int(warm[2] + (cool[2] - warm[2]) * t)
-        
+
         # Save the unscaled color as base color for future brightness adjustments
         self._rgb_color_base = (r, g, b)
-        
+
         # Apply brightness scaling
         scale = brightness / 255.0
         r_scaled, g_scaled, b_scaled = int(r * scale), int(g * scale), int(b * scale)
-        
+
         # Send scaled color but mark base color was already saved above
         await self.set_color((r_scaled, g_scaled, b_scaled), is_base_color=False)
         # Note: _rgb_color is set in set_color, but _rgb_color_base is preserved
