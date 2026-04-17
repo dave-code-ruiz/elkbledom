@@ -14,6 +14,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.light import (
     PLATFORM_SCHEMA,
     ATTR_BRIGHTNESS,
+    ATTR_COLOR_TEMP,
     ATTR_COLOR_TEMP_KELVIN,
     ATTR_EFFECT,
     ATTR_RGB_COLOR,
@@ -22,7 +23,7 @@ from homeassistant.components.light import (
     LightEntity,
     LightEntityFeature,
 )
-from homeassistant.util.color import (match_max_scale)
+from homeassistant.util.color import (match_max_scale, color_temperature_mired_to_kelvin)
 from homeassistant.helpers import device_registry
 
 PARALLEL_UPDATES = 0  # fix entity_platform parallel_updates Semaphore
@@ -276,13 +277,29 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 # COLOR_TEMP mode: re-apply current temp at new brightness
                 # (also handled below if ATTR_COLOR_TEMP_KELVIN is present, but
                 #  if only brightness changes we must apply it here)
-                current_temp = self.color_temp_kelvin
-                if current_temp and ATTR_COLOR_TEMP_KELVIN not in kwargs:
+                if ATTR_COLOR_TEMP_KELVIN not in kwargs and ATTR_COLOR_TEMP not in kwargs:
+                    current_temp = self.color_temp_kelvin
+                    if not current_temp:
+                        # No temp known yet — use midpoint of model range
+                        current_temp = (
+                            self._instance.min_color_temp_kelvin
+                            + self._instance.max_color_temp_kelvin
+                        ) // 2
                     await self._instance.set_color_temp_kelvin(current_temp, brightness)
             elif self._attr_color_mode == ColorMode.WHITE:
                 # WHITE mode: brightness is the white channel intensity
                 if ATTR_WHITE not in kwargs:
                     await self._instance.set_white(brightness)
+
+        # Handle legacy color_temp (mireds) sent by some cards/automations
+        if ATTR_COLOR_TEMP in kwargs and ATTR_COLOR_TEMP_KELVIN not in kwargs:
+            try:
+                kwargs = dict(kwargs)
+                kwargs[ATTR_COLOR_TEMP_KELVIN] = color_temperature_mired_to_kelvin(
+                    kwargs.pop(ATTR_COLOR_TEMP)
+                )
+            except Exception:
+                pass
 
         if ATTR_COLOR_TEMP_KELVIN in kwargs:
             self._attr_color_mode = ColorMode.COLOR_TEMP
