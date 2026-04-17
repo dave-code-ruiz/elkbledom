@@ -7,14 +7,13 @@ from typing import Any, Optional, Tuple
 from .elkbledom import BLEDOMInstance
 from .const import DOMAIN, EFFECTS, EFFECTS_list, EFFECTS_MAP, EFFECTS_LIST_MAP, CONF_EFFECTS_CLASS
 
-from homeassistant.const import CONF_MAC
+from homeassistant.const import CONF_MAC, CONF_COLOR_TEMP
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.components.light import (
     PLATFORM_SCHEMA,
     ATTR_BRIGHTNESS,
-    ATTR_COLOR_TEMP,
     ATTR_COLOR_TEMP_KELVIN,
     ATTR_EFFECT,
     ATTR_RGB_COLOR,
@@ -277,7 +276,7 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 # COLOR_TEMP mode: re-apply current temp at new brightness
                 # (also handled below if ATTR_COLOR_TEMP_KELVIN is present, but
                 #  if only brightness changes we must apply it here)
-                if ATTR_COLOR_TEMP_KELVIN not in kwargs and ATTR_COLOR_TEMP not in kwargs:
+                if ATTR_COLOR_TEMP_KELVIN not in kwargs and CONF_COLOR_TEMP not in kwargs:
                     current_temp = self.color_temp_kelvin
                     if not current_temp:
                         # No temp known yet — use midpoint of model range
@@ -292,11 +291,11 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                     await self._instance.set_white(brightness)
 
         # Handle legacy color_temp (mireds) sent by some cards/automations
-        if ATTR_COLOR_TEMP in kwargs and ATTR_COLOR_TEMP_KELVIN not in kwargs:
+        if CONF_COLOR_TEMP in kwargs and ATTR_COLOR_TEMP_KELVIN not in kwargs:
             try:
                 kwargs = dict(kwargs)
                 kwargs[ATTR_COLOR_TEMP_KELVIN] = color_temperature_mired_to_kelvin(
-                    kwargs.pop(ATTR_COLOR_TEMP)
+                    kwargs.pop(CONF_COLOR_TEMP)
                 )
             except Exception:
                 pass
