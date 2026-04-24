@@ -453,6 +453,36 @@
     }
   },
   {
+    "name": "XSL-",
+    "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
+    "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
+    "commands": {
+      "turn_on": [126, 4, 4, 1, 0, 1, 255, 0, 239],
+      "turn_off": [126, 4, 4, 0, 0, 0, 255, 0, 239],
+      "white": [126, 0, 1, 187, 0, 0, 0, 0, 239],
+      "effect_speed": [126, 4, 2, 187, 255, 255, 255, 0, 239],
+      "effect": [126, 5, 3, 187, 3, 255, 255, 0, 239],
+      "color_temp": [126, 6, 5, 2, 187, 187, 255, 8, 239]
+    }
+  },
+  {
+    "name": "LED LIGHT STRIP",
+    "write_uuid": "0000fff3-0000-1000-8000-00805f9b34fb",
+    "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
+    "effects_class": "EFFECTS",
+    "effects_list": "EFFECTS_list",
+    "commands": {
+      "turn_on": [126, 4, 4, 1, 0, 1, 255, 0, 239],
+      "turn_off": [126, 4, 4, 0, 0, 0, 255, 0, 239],
+      "white": [126, 0, 1, 187, 0, 0, 0, 0, 239],
+      "effect_speed": [126, 4, 2, 187, 255, 255, 255, 0, 239],
+      "effect": [126, 5, 3, 187, 3, 255, 255, 0, 239],
+      "color_temp": [126, 6, 5, 2, 187, 187, 255, 8, 239]
+    }
+  },
+  {
     "name": "DMRRBA-007",
     "write_uuid": "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     "read_uuid": "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
