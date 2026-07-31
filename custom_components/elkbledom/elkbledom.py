@@ -412,7 +412,13 @@ class BLEDOMInstance:
 
         async def write_native():
             """Use native brightness command then set base color."""
-            brightness_cmd = self._model.get_brightness_cmd(self._model_name, percent)
+            # Model command builders accept Home Assistant's native 0-255
+            # brightness value and perform the conversion to 0-100 once.
+            # Passing ``percent`` here converted it a second time, so a 50%
+            # request was transmitted as roughly 19%.
+            brightness_cmd = self._model.get_brightness_cmd(
+                self._model_name, self._brightness
+            )
             await self._write(brightness_cmd)
             LOGGER.debug("%s: Brightness set via native command: %d%%", self.name, percent)
 
@@ -716,40 +722,22 @@ class BLEDOMInstance:
 
 
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
-        """Handle notification responses."""
+        """Log notifications without treating command echoes as device state.
+
+        ELK devices reuse command type 0x01 for brightness commands and status
+        traffic.  In particular, ELK-BLEDOB places a fixed value of 0x01 in
+        byte seven of its brightness packet.  The old speculative parser read
+        that byte as one percent and overwrote Home Assistant's known value.
+        Until the response format can be positively identified, optimistic
+        state from successful commands is safer than parsing ambiguous bytes.
+        """
         self._notification_received = True  # Mark that we got a response
-        LOGGER.info("%s: ✓ Notification received (%d bytes): %s", self.name, len(data), ' '.join(f'{x:02x}' for x in data))
-        
-        # Parse notification data if available
-        if len(data) >= 9 and data[0] == 0x7e and data[8] == 0xef:
-            # Valid response packet
-            cmd_type = data[2]
-            
-            # Status response (0x01)
-            if cmd_type == 0x01:
-                # Power state might be in data[3]
-                power_state = data[3]
-                if power_state in [0x23, 0xf0, 0x01]:
-                    self._is_on = True
-                    LOGGER.debug("%s: Parsed power state: ON", self.name)
-                elif power_state in [0x24, 0x00]:
-                    self._is_on = False
-                    LOGGER.debug("%s: Parsed power state: OFF", self.name)
-                
-                # Try to parse RGB color if available
-                if len(data) >= 8:
-                    r, g, b = data[4], data[5], data[6]
-                    if r != 0xff or g != 0xff or b != 0xff:  # Not default/invalid values
-                        self._rgb_color = (r, g, b)
-                        LOGGER.debug("%s: Parsed RGB color: (%d, %d, %d)", self.name, r, g, b)
-                
-                # Brightness might be in data[7]
-                if len(data) >= 8 and data[7] != 0xff:
-                    brightness_percent = data[7]
-                    self._brightness = int(brightness_percent * 255 / 100)
-                    LOGGER.debug("%s: Parsed brightness: %d%%", self.name, brightness_percent)
-        
-        return
+        LOGGER.debug(
+            "%s: Notification received (%d bytes, state parsing disabled): %s",
+            self.name,
+            len(data),
+            " ".join(f"{value:02x}" for value in data),
+        )
 
     def _resolve_characteristics(self, services: BleakGATTServiceCollection) -> bool:
         """Resolve characteristics."""
