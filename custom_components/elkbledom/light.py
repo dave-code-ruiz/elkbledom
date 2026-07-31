@@ -327,18 +327,27 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 if current_brightness and current_brightness != 255:
                     await self._instance.set_brightness(current_brightness)
 
-        if ATTR_EFFECT in kwargs and kwargs[ATTR_EFFECT] != self.effect:
-            self._attr_effect = kwargs[ATTR_EFFECT]
+        if ATTR_EFFECT in kwargs:
+            requested_effect = kwargs[ATTR_EFFECT]
             # Get the correct effects class (user configured or model default)
             effects_class_name = self._get_configured_effects_class()
             if not effects_class_name:
                 effects_class_name = self._instance.model.get_effects_class(self._instance.model_name)
             effects_class = EFFECTS_MAP.get(effects_class_name, EFFECTS)
-            effect_value = effects_class[kwargs[ATTR_EFFECT]].value
+            effect_value = effects_class[requested_effect].value
+            LOGGER.debug(
+                "%s: Requesting effect '%s' (0x%02x) using %s",
+                self.name,
+                requested_effect,
+                effect_value,
+                effects_class_name,
+            )
             await self._instance.set_effect(effect_value)
-            # Also send effect speed to ensure it's applied
-            if self._instance.effect_speed is not None:
-                await self._instance.set_effect_speed(self._instance.effect_speed)
+            # Only advertise the new effect after the BLE write completes.  A
+            # failed call remains retryable, including selection of the same
+            # effect.  Speed is sent separately by its number entity to avoid
+            # overrunning the controller with a second immediate packet.
+            self._attr_effect = requested_effect
 
         self.async_write_ha_state()
 

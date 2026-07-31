@@ -25,7 +25,15 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_ATTEMPTS = 3
 #DISCONNECT_DELAY = 120
 BLEAK_BACKOFF_TIME = 0.25
-RETRY_BACKOFF_EXCEPTIONS = (BleakDBusError,)
+# Connection timeouts need the same retry treatment as explicit Bluetooth
+# transport errors.  Previously a timeout was swallowed by _ensure_connected,
+# which allowed the caller to continue with no usable client.
+RETRY_BACKOFF_EXCEPTIONS = (BleakDBusError, asyncio.TimeoutError)
+
+# ELK controllers use writes without response and have very small command
+# buffers.  Keep a short gap between writes so the peripheral has time to
+# consume one command before Home Assistant queues the next one.
+COMMAND_SETTLE_TIME = 0.1
 WrapFuncType = TypeVar("WrapFuncType", bound=Callable[..., Any])
 
 def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
@@ -51,15 +59,16 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
                 raise
             except RETRY_BACKOFF_EXCEPTIONS as err:
                 if attempt >= max_attempts:
-                    LOGGER.debug("%s: %s error calling %s, reach max attempts (%s/%s)",self.name,type(err),func,attempt,max_attempts,exc_info=True,)
+                    LOGGER.error("%s: %s failed after %s attempts", self.name, func.__name__, attempts, exc_info=True)
                     raise
-                LOGGER.debug("%s: %s error calling %s, backing off %ss, retrying (%s/%s)...",self.name,type(err),func,BLEAK_BACKOFF_TIME,attempt,max_attempts,exc_info=True,)
+                LOGGER.warning("%s: %s failed with %s; retrying in %ss (%s/%s)", self.name, func.__name__, type(err).__name__, BLEAK_BACKOFF_TIME, attempt + 1, attempts)
                 await asyncio.sleep(BLEAK_BACKOFF_TIME)
             except BLEAK_EXCEPTIONS as err:
                 if attempt >= max_attempts:
-                    LOGGER.debug("%s: %s error calling %s, reach max attempts (%s/%s): %s",self.name,type(err),func,attempt,max_attempts,err,exc_info=True,)
+                    LOGGER.error("%s: %s failed after %s attempts: %s", self.name, func.__name__, attempts, err, exc_info=True)
                     raise
-                LOGGER.debug("%s: %s error calling %s, retrying  (%s/%s)...: %s",self.name,type(err),func,attempt,max_attempts,err,exc_info=True,)
+                LOGGER.warning("%s: %s failed with %s; retrying in %ss (%s/%s)", self.name, func.__name__, type(err).__name__, BLEAK_BACKOFF_TIME, attempt + 1, attempts)
+                await asyncio.sleep(BLEAK_BACKOFF_TIME)
 
     return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
 
@@ -123,6 +132,9 @@ class BLEDOMInstance:
         self._device: BLEDevice | None = None
         self._device_data: DeviceData | None = None
         self._connect_lock: asyncio.Lock = asyncio.Lock()
+        # Every platform entity shares this instance.  Serialize their writes
+        # so light, effect-speed, and microphone commands cannot interleave.
+        self._command_lock: asyncio.Lock = asyncio.Lock()
         self._client: BleakClientWithServiceCache | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
         self._cached_services: BleakGATTServiceCollection | None = None
@@ -217,14 +229,16 @@ class BLEDOMInstance:
         return self._rgb_color_base
             
     async def _write(self, data: bytearray):
-        """Send command to device and read response."""
+        """Serialize and pace a command sent without a GATT response."""
         if not data:
             return
-        await self._ensure_connected()
-        await self._write_while_connected(data)
+        async with self._command_lock:
+            await self._ensure_connected()
+            await self._write_while_connected(data)
+            await asyncio.sleep(COMMAND_SETTLE_TIME)
 
     async def _write_while_connected(self, data: bytearray):
-        LOGGER.debug(''.join(format(x, ' 03x') for x in data))
+        LOGGER.debug("%s: Sending BLE command: %s", self.name, " ".join(f"{value:02x}" for value in data))
         await self._client.write_gatt_char(self._write_uuid, data, False)
 
     @property
@@ -422,12 +436,14 @@ class BLEDOMInstance:
     @retry_bluetooth_connection_error
     async def set_effect_speed(self, value: int) -> None:
         effect_speed = self._model.get_effect_speed_cmd(self._model_name, value)
+        LOGGER.debug("%s: Applying effect speed %d", self.name, value)
         await self._write(effect_speed)
         self._effect_speed = value
 
     @retry_bluetooth_connection_error
     async def set_effect(self, value: int) -> None:
         effect = self._model.get_effect_cmd(self._model_name, value)
+        LOGGER.debug("%s: Applying effect value 0x%02x", self.name, value)
         await self._write(effect)
         self._effect = value
 
@@ -597,7 +613,7 @@ class BLEDOMInstance:
                     )
             except asyncio.TimeoutError:
                 LOGGER.error("%s: Connection attempt timed out; RSSI: %s", self.name, self.rssi)
-                return
+                raise
 
             LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
             
