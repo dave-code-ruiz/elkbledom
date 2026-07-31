@@ -117,8 +117,12 @@ class BLEDOMLight(RestoreEntity, LightEntity):
 
     @property
     def rgb_color(self):
-        if self._instance.rgb_color:
-            return match_max_scale((255,), self._instance.rgb_color)
+        if self._instance.rgb_color is not None:
+            # Report the user's unscaled colour selection.  In RGB brightness
+            # mode the value most recently transmitted to the controller is
+            # deliberately dimmed; exposing that value makes HA's colour
+            # picker drift as low-value channels are rounded.
+            return match_max_scale((255,), self._instance.get_color_base())
         return None
 
     @property
@@ -187,10 +191,15 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             # Restore RGB color
             if ATTR_RGB_COLOR in last_state.attributes and last_state.attributes[ATTR_RGB_COLOR] is not None:
                 try:
-                    self._instance._rgb_color = tuple(last_state.attributes[ATTR_RGB_COLOR])
+                    restored_rgb = tuple(last_state.attributes[ATTR_RGB_COLOR])
+                    # HA restores the selected (unscaled) colour.  Keep the
+                    # base colour in sync so the first brightness adjustment
+                    # after a restart does not unexpectedly scale white.
+                    self._instance._rgb_color = restored_rgb
+                    self._instance._rgb_color_base = restored_rgb
                     if ColorMode.RGB in self._attr_supported_color_modes:
                         self._attr_color_mode = ColorMode.RGB
-                        LOGGER.debug(f"Restored RGB color: {self._instance._rgb_color}")
+                        LOGGER.debug("Restored RGB color: %s", restored_rgb)
                     else:
                         LOGGER.debug("RGB color restored but model does not support RGB mode, ignoring color_mode")
                 except (TypeError, ValueError) as e:
