@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from homeassistant.components.number import (
-    NumberEntity,
-    NumberEntityDescription,
-)
+from homeassistant.components.number import NumberEntity
 
 from .elkbledom import BLEDOMInstance
 from .const import DOMAIN
@@ -38,6 +35,12 @@ class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
         self._instance = bledomInstance
         self._attr_name = attr_name
         self._attr_unique_id = self._instance.address + "_effect_speed"
+        # Effect commands and the instance default use the full byte range.
+        # These entity attributes are consumed directly by NumberEntity;
+        # constructing an unused NumberEntityDescription does not set limits.
+        self._attr_native_min_value = 0
+        self._attr_native_max_value = 255
+        self._attr_native_step = 1
         self._effect_speed = 0
 
     @property
@@ -73,14 +76,6 @@ class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
                           self._instance.address)},
         )
 
-    @property
-    def entity_info(self) -> None:
-        NumberEntityDescription(
-            key=self.name,
-            native_max_value=255,
-            native_min_value=0,
-        )
-
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""
         await self._instance.set_effect_speed(int(value))
@@ -95,9 +90,19 @@ class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
         if (last_state := await self.async_get_last_state()) is not None:
             try:
                 self._effect_speed = int(float(last_state.state))
-                LOG.debug(f"Restored effect speed for {self.name}: {self._effect_speed}")
+                # native_value reads from the shared instance, so restore both
+                # copies to keep the number entity and subsequent effects in sync.
+                self._instance._effect_speed = self._effect_speed
+                LOG.debug(
+                    "Restored effect speed for %s: %d",
+                    self.name,
+                    self._effect_speed,
+                )
             except (ValueError, TypeError):
-                LOG.debug(f"Could not restore effect speed for {self.name}, using default")
+                LOG.debug(
+                    "Could not restore effect speed for %s, using default",
+                    self.name,
+                )
 
 class BLEDOMMicSensitivity(RestoreEntity, NumberEntity):
     """Microphone Sensitivity entity"""
