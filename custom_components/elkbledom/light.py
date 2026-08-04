@@ -313,28 +313,30 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             self._attr_color_mode = ColorMode.COLOR_TEMP
             new_temp = kwargs[ATTR_COLOR_TEMP_KELVIN]
             new_brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
-            if new_temp != self.color_temp_kelvin or ATTR_BRIGHTNESS in kwargs:
-                self._attr_effect = None
-                await self._instance.set_color_temp_kelvin(new_temp, new_brightness)
+            # An explicit colour-temperature request must be retransmitted even
+            # when HA already stores the same value, because it also exits an
+            # effect running on the controller.
+            await self._instance.set_color_temp_kelvin(new_temp, new_brightness)
+            self._attr_effect = None
 
         if ATTR_WHITE in kwargs:
             if ColorMode.WHITE in self._attr_supported_color_modes:
                 self._attr_color_mode = ColorMode.WHITE
-            self._attr_effect = None
             await self._instance.set_color(self._transform_color_brightness((255, 255, 255), kwargs[ATTR_WHITE]), is_base_color=False)
             await self._instance.set_white(kwargs[ATTR_WHITE])
+            self._attr_effect = None
 
         if ATTR_RGB_COLOR in kwargs:
             self._attr_color_mode = ColorMode.RGB
-            if kwargs[ATTR_RGB_COLOR] != self.rgb_color:
-                color = kwargs[ATTR_RGB_COLOR]
-                self._attr_effect = None
-                # Save as base color and apply current brightness
-                await self._instance.set_color(color, is_base_color=True)
-                # Apply current brightness to the new color
-                current_brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
-                if current_brightness and current_brightness != 255:
-                    await self._instance.set_brightness(current_brightness)
+            color = kwargs[ATTR_RGB_COLOR]
+            # Always retransmit an explicitly requested colour.  HA may still
+            # display a colour selected before an effect started, so equality
+            # with optimistic state does not mean the controller is in RGB mode.
+            await self._instance.set_color(color, is_base_color=True)
+            current_brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
+            if current_brightness and current_brightness != 255:
+                await self._instance.set_brightness(current_brightness)
+            self._attr_effect = None
 
         if ATTR_EFFECT in kwargs:
             requested_effect = kwargs[ATTR_EFFECT]
