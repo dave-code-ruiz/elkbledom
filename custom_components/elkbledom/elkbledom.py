@@ -478,6 +478,13 @@ class BLEDOMInstance:
             
     @retry_bluetooth_connection_error
     async def set_effect_speed(self, value: int) -> None:
+        min_speed = self._model.get_min_effect_speed(self._model_name)
+        max_speed = self._model.get_max_effect_speed(self._model_name)
+        if not min_speed <= value <= max_speed:
+            raise ValueError(
+                f"Effect speed {value} is outside the supported range "
+                f"{min_speed}-{max_speed} for {self._model_name}"
+            )
         effect_speed = self._model.get_effect_speed_cmd(self._model_name, value)
         LOGGER.debug("%s: Applying effect speed %d", self.name, value)
         await self._write(effect_speed)

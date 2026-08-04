@@ -46,6 +46,10 @@
     "read_uuid": "0000fff4-0000-1000-8000-00805f9b34fb",
     "effects_class": "EFFECTS",
     "effects_list": "EFFECTS_list",
+    "effect_speed_range": {
+      "min": 0,
+      "max": 183
+    },
     "commands": {
       "turn_on": [126, 7, 4, 255, 0, 1, 2, 1, 239],
       "turn_off": [126, 7, 4, 0, 0, 0, 2, 1, 239],

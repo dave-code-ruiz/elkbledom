@@ -35,11 +35,14 @@ class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
         self._instance = bledomInstance
         self._attr_name = attr_name
         self._attr_unique_id = self._instance.address + "_effect_speed"
-        # Effect commands and the instance default use the full byte range.
-        # These entity attributes are consumed directly by NumberEntity;
-        # constructing an unused NumberEntityDescription does not set limits.
-        self._attr_native_min_value = 0
-        self._attr_native_max_value = 255
+        # Limits are model-specific because some controllers use values above
+        # their functional range for other modes or become unresponsive.
+        self._attr_native_min_value = self._instance.model.get_min_effect_speed(
+            self._instance.model_name
+        )
+        self._attr_native_max_value = self._instance.model.get_max_effect_speed(
+            self._instance.model_name
+        )
         self._attr_native_step = 1
         self._effect_speed = 0
 
@@ -89,7 +92,11 @@ class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
         # Restore the last known effect speed
         if (last_state := await self.async_get_last_state()) is not None:
             try:
-                self._effect_speed = int(float(last_state.state))
+                restored_speed = int(float(last_state.state))
+                self._effect_speed = max(
+                    self._attr_native_min_value,
+                    min(restored_speed, self._attr_native_max_value),
+                )
                 # native_value reads from the shared instance, so restore both
                 # copies to keep the number entity and subsequent effects in sync.
                 self._instance._effect_speed = self._effect_speed
