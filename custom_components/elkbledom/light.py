@@ -352,10 +352,20 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 effects_class_name,
             )
             await self._instance.set_effect(effect_value)
-            # Only advertise the new effect after the BLE write completes.  A
-            # failed call remains retryable, including selection of the same
-            # effect.  Speed is sent separately by its number entity to avoid
-            # overrunning the controller with a second immediate packet.
+            # ELK-BLEDOB exposes speed as a separate command and can drop the
+            # immediate second packet.  Preserve the existing sequence for
+            # other models, where applying speed with an effect may be needed.
+            if (
+                self._instance.model_name != "ELK-BLEDOB"
+                and self._instance.effect_speed is not None
+            ):
+                await self._instance.set_effect_speed(
+                    self._instance.effect_speed
+                )
+
+            # Only advertise the effect after the complete command sequence
+            # succeeds. Re-selecting the same effect deliberately retransmits
+            # it because writes without a response can be silently dropped.
             self._attr_effect = requested_effect
 
         self.async_write_ha_state()
