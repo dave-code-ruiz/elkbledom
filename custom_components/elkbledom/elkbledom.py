@@ -25,7 +25,14 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_ATTEMPTS = 3
 #DISCONNECT_DELAY = 120
 BLEAK_BACKOFF_TIME = 0.25
-RETRY_BACKOFF_EXCEPTIONS = (BleakDBusError,)
+# Connection timeouts need the same retry treatment as explicit Bluetooth
+# transport errors.  Previously a timeout was swallowed by _ensure_connected,
+# which allowed the caller to continue with no usable client.
+RETRY_BACKOFF_EXCEPTIONS = (BleakDBusError, asyncio.TimeoutError)
+
+# ELK-BLEDOB commands are sent without a GATT response.  A short gap gives the
+# controller time to consume one command before another is queued.
+ELK_BLEDOB_COMMAND_SETTLE_TIME = 0.1
 WrapFuncType = TypeVar("WrapFuncType", bound=Callable[..., Any])
 
 def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
@@ -51,15 +58,45 @@ def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
                 raise
             except RETRY_BACKOFF_EXCEPTIONS as err:
                 if attempt >= max_attempts:
-                    LOGGER.debug("%s: %s error calling %s, reach max attempts (%s/%s)",self.name,type(err),func,attempt,max_attempts,exc_info=True,)
+                    LOGGER.error(
+                        "%s: %s failed after %s attempts",
+                        self.name,
+                        func.__name__,
+                        attempts,
+                        exc_info=True,
+                    )
                     raise
-                LOGGER.debug("%s: %s error calling %s, backing off %ss, retrying (%s/%s)...",self.name,type(err),func,BLEAK_BACKOFF_TIME,attempt,max_attempts,exc_info=True,)
+                LOGGER.warning(
+                    "%s: %s failed with %s; retrying in %ss (%s/%s)",
+                    self.name,
+                    func.__name__,
+                    type(err).__name__,
+                    BLEAK_BACKOFF_TIME,
+                    attempt + 1,
+                    attempts,
+                )
                 await asyncio.sleep(BLEAK_BACKOFF_TIME)
             except BLEAK_EXCEPTIONS as err:
                 if attempt >= max_attempts:
-                    LOGGER.debug("%s: %s error calling %s, reach max attempts (%s/%s): %s",self.name,type(err),func,attempt,max_attempts,err,exc_info=True,)
+                    LOGGER.error(
+                        "%s: %s failed after %s attempts: %s",
+                        self.name,
+                        func.__name__,
+                        attempts,
+                        err,
+                        exc_info=True,
+                    )
                     raise
-                LOGGER.debug("%s: %s error calling %s, retrying  (%s/%s)...: %s",self.name,type(err),func,attempt,max_attempts,err,exc_info=True,)
+                LOGGER.warning(
+                    "%s: %s failed with %s; retrying in %ss (%s/%s)",
+                    self.name,
+                    func.__name__,
+                    type(err).__name__,
+                    BLEAK_BACKOFF_TIME,
+                    attempt + 1,
+                    attempts,
+                )
+                await asyncio.sleep(BLEAK_BACKOFF_TIME)
 
     return cast(WrapFuncType, _async_wrap_retry_bluetooth_connection_error)
 
@@ -123,6 +160,9 @@ class BLEDOMInstance:
         self._device: BLEDevice | None = None
         self._device_data: DeviceData | None = None
         self._connect_lock: asyncio.Lock = asyncio.Lock()
+        # Every platform entity shares this instance.  Serialize their writes
+        # so light, effect-speed, and microphone commands cannot interleave.
+        self._command_lock: asyncio.Lock = asyncio.Lock()
         self._client: BleakClientWithServiceCache | None = None
         self._disconnect_timer: asyncio.TimerHandle | None = None
         self._cached_services: BleakGATTServiceCollection | None = None
@@ -161,7 +201,7 @@ class BLEDOMInstance:
         
         if not self._device:
             raise ConfigEntryNotReady(f"You need to add bluetooth integration (https://www.home-assistant.io/integrations/bluetooth) or couldn't find a nearby device with address: {address}")
-            
+
         # self._adv_data: AdvertisementData | None = None
         self._detect_model()
         LOGGER.debug('Model information for device %s : ModelNo %s, Turn on cmd %s, Turn off cmd %s, rssi %s', 
@@ -216,16 +256,27 @@ class BLEDOMInstance:
     def get_color_base(self):
         return self._rgb_color_base
             
-    async def _write(self, data: bytearray):
-        """Send command to device and read response."""
+    async def _write(self, data: list[int] | bytearray) -> None:
+        """Serialize and pace a command sent without a GATT response."""
         if not data:
             return
-        await self._ensure_connected()
-        await self._write_while_connected(data)
+        async with self._command_lock:
+            await self._ensure_connected()
+            await self._write_while_connected(data)
+            if self._model_name == "ELK-BLEDOB":
+                await asyncio.sleep(ELK_BLEDOB_COMMAND_SETTLE_TIME)
 
-    async def _write_while_connected(self, data: bytearray):
-        LOGGER.debug(''.join(format(x, ' 03x') for x in data))
-        await self._client.write_gatt_char(self._write_uuid, data, False)
+    async def _write_while_connected(
+        self, data: list[int] | bytearray
+    ) -> None:
+        LOGGER.debug(
+            "%s: Sending BLE command: %s",
+            self.name,
+            " ".join(f"{value:02x}" for value in data),
+        )
+        await self._client.write_gatt_char(
+            self._write_uuid, data, response=False
+        )
 
     @property
     def address(self):
@@ -398,7 +449,13 @@ class BLEDOMInstance:
 
         async def write_native():
             """Use native brightness command then set base color."""
-            brightness_cmd = self._model.get_brightness_cmd(self._model_name, percent)
+            # Model command builders accept Home Assistant's native 0-255
+            # brightness value and perform the conversion to 0-100 once.
+            # Passing ``percent`` here converted it a second time, so a 50%
+            # request was transmitted as roughly 19%.
+            brightness_cmd = self._model.get_brightness_cmd(
+                self._model_name, self._brightness
+            )
             await self._write(brightness_cmd)
             LOGGER.debug("%s: Brightness set via native command: %d%%", self.name, percent)
 
@@ -421,13 +478,22 @@ class BLEDOMInstance:
             
     @retry_bluetooth_connection_error
     async def set_effect_speed(self, value: int) -> None:
+        min_speed = self._model.get_min_effect_speed(self._model_name)
+        max_speed = self._model.get_max_effect_speed(self._model_name)
+        if not min_speed <= value <= max_speed:
+            raise ValueError(
+                f"Effect speed {value} is outside the supported range "
+                f"{min_speed}-{max_speed} for {self._model_name}"
+            )
         effect_speed = self._model.get_effect_speed_cmd(self._model_name, value)
+        LOGGER.debug("%s: Applying effect speed %d", self.name, value)
         await self._write(effect_speed)
         self._effect_speed = value
 
     @retry_bluetooth_connection_error
     async def set_effect(self, value: int) -> None:
         effect = self._model.get_effect_cmd(self._model_name, value)
+        LOGGER.debug("%s: Applying effect value 0x%02x", self.name, value)
         await self._write(effect)
         self._effect = value
 
@@ -586,18 +652,16 @@ class BLEDOMInstance:
                 return
 
             LOGGER.debug("%s: Connecting; RSSI: %s", self.name, self.rssi)
-            try:
-                client = await establish_connection(
-                        BleakClientWithServiceCache,
-                        self._device,
-                        self.name,
-                        self._disconnected,
-                        cached_services=self._cached_services,
-                        ble_device_callback=lambda: self._device,
-                    )
-            except asyncio.TimeoutError:
-                LOGGER.error("%s: Connection attempt timed out; RSSI: %s", self.name, self.rssi)
-                return
+            # Let connection errors reach the command's retry decorator so a
+            # transient timeout is retried and logged at the appropriate level.
+            client = await establish_connection(
+                BleakClientWithServiceCache,
+                self._device,
+                self.name,
+                self._disconnected,
+                cached_services=self._cached_services,
+                ble_device_callback=lambda: self._device,
+            )
 
             LOGGER.debug("%s: Connected; RSSI: %s", self.name, self.rssi)
             
@@ -702,16 +766,32 @@ class BLEDOMInstance:
     def _notification_handler(self, _sender: int, data: bytearray) -> None:
         """Handle notification responses."""
         self._notification_received = True  # Mark that we got a response
-        LOGGER.info("%s: ✓ Notification received (%d bytes): %s", self.name, len(data), ' '.join(f'{x:02x}' for x in data))
-        
-        # Parse notification data if available
+
+        # ELK-BLEDOB uses command type 0x01 for brightness traffic and places a
+        # fixed 0x01 in byte seven.  Its notifications cannot currently be
+        # distinguished from command echoes, so retain optimistic command
+        # state rather than incorrectly reporting one percent brightness.
+        if self._model_name == "ELK-BLEDOB":
+            LOGGER.debug(
+                "%s: Notification received (%d bytes, state parsing disabled): %s",
+                self.name,
+                len(data),
+                " ".join(f"{value:02x}" for value in data),
+            )
+            return
+
+        LOGGER.info(
+            "%s: Notification received (%d bytes): %s",
+            self.name,
+            len(data),
+            " ".join(f"{value:02x}" for value in data),
+        )
+
+        # Preserve the existing state parser for other controller models.
         if len(data) >= 9 and data[0] == 0x7e and data[8] == 0xef:
-            # Valid response packet
             cmd_type = data[2]
-            
-            # Status response (0x01)
+
             if cmd_type == 0x01:
-                # Power state might be in data[3]
                 power_state = data[3]
                 if power_state in [0x23, 0xf0, 0x01]:
                     self._is_on = True
@@ -719,21 +799,27 @@ class BLEDOMInstance:
                 elif power_state in [0x24, 0x00]:
                     self._is_on = False
                     LOGGER.debug("%s: Parsed power state: OFF", self.name)
-                
-                # Try to parse RGB color if available
-                if len(data) >= 8:
-                    r, g, b = data[4], data[5], data[6]
-                    if r != 0xff or g != 0xff or b != 0xff:  # Not default/invalid values
-                        self._rgb_color = (r, g, b)
-                        LOGGER.debug("%s: Parsed RGB color: (%d, %d, %d)", self.name, r, g, b)
-                
-                # Brightness might be in data[7]
-                if len(data) >= 8 and data[7] != 0xff:
+
+                r, g, b = data[4], data[5], data[6]
+                if r != 0xff or g != 0xff or b != 0xff:
+                    self._rgb_color = (r, g, b)
+                    self._rgb_color_base = (r, g, b)
+                    LOGGER.debug(
+                        "%s: Parsed RGB color: (%d, %d, %d)",
+                        self.name,
+                        r,
+                        g,
+                        b,
+                    )
+
+                if data[7] != 0xff:
                     brightness_percent = data[7]
                     self._brightness = int(brightness_percent * 255 / 100)
-                    LOGGER.debug("%s: Parsed brightness: %d%%", self.name, brightness_percent)
-        
-        return
+                    LOGGER.debug(
+                        "%s: Parsed brightness: %d%%",
+                        self.name,
+                        brightness_percent,
+                    )
 
     def _resolve_characteristics(self, services: BleakGATTServiceCollection) -> bool:
         """Resolve characteristics."""

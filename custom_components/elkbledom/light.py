@@ -117,8 +117,12 @@ class BLEDOMLight(RestoreEntity, LightEntity):
 
     @property
     def rgb_color(self):
-        if self._instance.rgb_color:
-            return match_max_scale((255,), self._instance.rgb_color)
+        if self._instance.rgb_color is not None:
+            # Report the user's unscaled colour selection.  In RGB brightness
+            # mode the value most recently transmitted to the controller is
+            # deliberately dimmed; exposing that value makes HA's colour
+            # picker drift as low-value channels are rounded.
+            return match_max_scale((255,), self._instance.get_color_base())
         return None
 
     @property
@@ -187,10 +191,15 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             # Restore RGB color
             if ATTR_RGB_COLOR in last_state.attributes and last_state.attributes[ATTR_RGB_COLOR] is not None:
                 try:
-                    self._instance._rgb_color = tuple(last_state.attributes[ATTR_RGB_COLOR])
+                    restored_rgb = tuple(last_state.attributes[ATTR_RGB_COLOR])
+                    # HA restores the selected (unscaled) colour.  Keep the
+                    # base colour in sync so the first brightness adjustment
+                    # after a restart does not unexpectedly scale white.
+                    self._instance._rgb_color = restored_rgb
+                    self._instance._rgb_color_base = restored_rgb
                     if ColorMode.RGB in self._attr_supported_color_modes:
                         self._attr_color_mode = ColorMode.RGB
-                        LOGGER.debug(f"Restored RGB color: {self._instance._rgb_color}")
+                        LOGGER.debug("Restored RGB color: %s", restored_rgb)
                     else:
                         LOGGER.debug("RGB color restored but model does not support RGB mode, ignoring color_mode")
                 except (TypeError, ValueError) as e:
@@ -304,41 +313,62 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             self._attr_color_mode = ColorMode.COLOR_TEMP
             new_temp = kwargs[ATTR_COLOR_TEMP_KELVIN]
             new_brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
-            if new_temp != self.color_temp_kelvin or ATTR_BRIGHTNESS in kwargs:
-                self._attr_effect = None
-                await self._instance.set_color_temp_kelvin(new_temp, new_brightness)
+            # An explicit colour-temperature request must be retransmitted even
+            # when HA already stores the same value, because it also exits an
+            # effect running on the controller.
+            await self._instance.set_color_temp_kelvin(new_temp, new_brightness)
+            self._attr_effect = None
 
         if ATTR_WHITE in kwargs:
             if ColorMode.WHITE in self._attr_supported_color_modes:
                 self._attr_color_mode = ColorMode.WHITE
-            self._attr_effect = None
             await self._instance.set_color(self._transform_color_brightness((255, 255, 255), kwargs[ATTR_WHITE]), is_base_color=False)
             await self._instance.set_white(kwargs[ATTR_WHITE])
+            self._attr_effect = None
 
         if ATTR_RGB_COLOR in kwargs:
             self._attr_color_mode = ColorMode.RGB
-            if kwargs[ATTR_RGB_COLOR] != self.rgb_color:
-                color = kwargs[ATTR_RGB_COLOR]
-                self._attr_effect = None
-                # Save as base color and apply current brightness
-                await self._instance.set_color(color, is_base_color=True)
-                # Apply current brightness to the new color
-                current_brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
-                if current_brightness and current_brightness != 255:
-                    await self._instance.set_brightness(current_brightness)
+            color = kwargs[ATTR_RGB_COLOR]
+            # Always retransmit an explicitly requested colour.  HA may still
+            # display a colour selected before an effect started, so equality
+            # with optimistic state does not mean the controller is in RGB mode.
+            await self._instance.set_color(color, is_base_color=True)
+            current_brightness = kwargs.get(ATTR_BRIGHTNESS, self.brightness)
+            if current_brightness and current_brightness != 255:
+                await self._instance.set_brightness(current_brightness)
+            self._attr_effect = None
 
-        if ATTR_EFFECT in kwargs and kwargs[ATTR_EFFECT] != self.effect:
-            self._attr_effect = kwargs[ATTR_EFFECT]
+        if ATTR_EFFECT in kwargs:
+            requested_effect = kwargs[ATTR_EFFECT]
             # Get the correct effects class (user configured or model default)
             effects_class_name = self._get_configured_effects_class()
             if not effects_class_name:
                 effects_class_name = self._instance.model.get_effects_class(self._instance.model_name)
             effects_class = EFFECTS_MAP.get(effects_class_name, EFFECTS)
-            effect_value = effects_class[kwargs[ATTR_EFFECT]].value
+            effect_value = effects_class[requested_effect].value
+            LOGGER.debug(
+                "%s: Requesting effect '%s' (0x%02x) using %s",
+                self.name,
+                requested_effect,
+                effect_value,
+                effects_class_name,
+            )
             await self._instance.set_effect(effect_value)
-            # Also send effect speed to ensure it's applied
-            if self._instance.effect_speed is not None:
-                await self._instance.set_effect_speed(self._instance.effect_speed)
+            # ELK-BLEDOB exposes speed as a separate command and can drop the
+            # immediate second packet.  Preserve the existing sequence for
+            # other models, where applying speed with an effect may be needed.
+            if (
+                self._instance.model_name != "ELK-BLEDOB"
+                and self._instance.effect_speed is not None
+            ):
+                await self._instance.set_effect_speed(
+                    self._instance.effect_speed
+                )
+
+            # Only advertise the effect after the complete command sequence
+            # succeeds. Re-selecting the same effect deliberately retransmits
+            # it because writes without a response can be silently dropped.
+            self._attr_effect = requested_effect
 
         self.async_write_ha_state()
 

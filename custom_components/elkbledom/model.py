@@ -277,6 +277,22 @@ class Model:
             cmd = [int(value) if x == "v" else x for x in cmd]
             return cmd
         return None
+
+    def get_min_effect_speed(self, internal_key: str) -> int:
+        """Return the minimum supported effect speed for a model."""
+        if internal_key in self._models:
+            return self._models[internal_key].get(
+                "effect_speed_range", {}
+            ).get("min", 0)
+        return 0
+
+    def get_max_effect_speed(self, internal_key: str) -> int:
+        """Return the maximum supported effect speed for a model."""
+        if internal_key in self._models:
+            return self._models[internal_key].get(
+                "effect_speed_range", {}
+            ).get("max", 255)
+        return 255
     
     def get_effect_cmd(self, internal_key: str, value: int) -> Optional[List[int]]:
         """Get effect command for model by internal key"""
