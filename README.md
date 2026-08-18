@@ -188,6 +188,7 @@ handle: 0x0008, char properties: 0x06, char value handle: 0x0009, uuid: 0000fff3
 | `0000fff3-...` or `0000ffe1-...` | **Compatible** | This repository |
 | `0000ff01-...` | Use different integration | [lednetwf_ble](https://github.com/raulgbcr/lednetwf_ble) |
 | `0000ffd5-...`, `0000ffd9-...`, etc. | Use different integration | [led_ble](https://www.home-assistant.io/integrations/led_ble/) |
+| `0000AC5x-...` | Use different integration | [istrip_plus](https://github.com/vakintosh/istrip_plus_HA) |
 
 ### Using BTScan for Unsupported Devices
 
