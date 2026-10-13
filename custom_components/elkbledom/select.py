@@ -166,3 +166,7 @@ class BLEDOMBrightnessModeSelect(RestoreEntity, SelectEntity):
             else:
                 LOG.debug(f"Could not restore brightness mode for {self.name}, using default")
 
+        # The device instance starts in "auto" on every load; apply the restored
+        # (or configured) mode to it, or the selector shows a mode that is not used.
+        await self._instance.apply_brightness_mode(self._current_option)
+
