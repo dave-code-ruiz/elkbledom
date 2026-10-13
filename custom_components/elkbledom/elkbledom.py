@@ -33,6 +33,11 @@ RETRY_BACKOFF_EXCEPTIONS = (BleakDBusError, asyncio.TimeoutError)
 # ELK-BLEDOB commands are sent without a GATT response.  A short gap gives the
 # controller time to consume one command before another is queued.
 ELK_BLEDOB_COMMAND_SETTLE_TIME = 0.1
+# ELK-BLEDDM controllers also drop a command that arrives too soon after the
+# previous one: "turn on" followed at once by a color write leaves the strip
+# off, and an effect followed at once by its speed keeps the old color (#157).
+# The same writes 250-500 ms apart are all applied.
+ELK_BLEDDM_COMMAND_SETTLE_TIME = 0.3
 WrapFuncType = TypeVar("WrapFuncType", bound=Callable[..., Any])
 
 def retry_bluetooth_connection_error(func: WrapFuncType) -> WrapFuncType:
@@ -265,6 +270,8 @@ class BLEDOMInstance:
             await self._write_while_connected(data)
             if self._model_name == "ELK-BLEDOB":
                 await asyncio.sleep(ELK_BLEDOB_COMMAND_SETTLE_TIME)
+            elif self._model_name == "ELK-BLEDDM":
+                await asyncio.sleep(ELK_BLEDDM_COMMAND_SETTLE_TIME)
 
     async def _write_while_connected(
         self, data: list[int] | bytearray
