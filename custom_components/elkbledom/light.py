@@ -10,7 +10,7 @@ from .const import DOMAIN, EFFECTS, EFFECTS_list, EFFECTS_MAP, EFFECTS_LIST_MAP,
 from homeassistant.const import CONF_MAC, CONF_COLOR_TEMP
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 from homeassistant.components.light import (
     PLATFORM_SCHEMA,
     ATTR_BRIGHTNESS,
@@ -35,6 +35,45 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 async def async_setup_entry(hass, config_entry, async_add_devices) -> None:
     instance = hass.data[DOMAIN][config_entry.entry_id]
     async_add_devices([BLEDOMLight(instance, config_entry.data["name"], config_entry.entry_id)])
+
+class BLEDOMLightExtraStoredData(ExtraStoredData):
+    """Color state kept across restarts, including while the light is off.
+
+    Home Assistant drops brightness and color attributes from a light's state
+    while it is off, so restoring from the state alone loses them whenever Home
+    Assistant restarts with the light off.
+    """
+
+    def __init__(
+        self,
+        brightness: int | None,
+        rgb_color: Tuple[int, int, int] | None,
+        color_temp_kelvin: int | None,
+        color_mode: str | None,
+    ) -> None:
+        self.brightness = brightness
+        self.rgb_color = rgb_color
+        self.color_temp_kelvin = color_temp_kelvin
+        self.color_mode = color_mode
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "brightness": self.brightness,
+            "rgb_color": list(self.rgb_color) if self.rgb_color is not None else None,
+            "color_temp_kelvin": self.color_temp_kelvin,
+            "color_mode": self.color_mode,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "BLEDOMLightExtraStoredData":
+        rgb = data.get("rgb_color")
+        return cls(
+            data.get("brightness"),
+            tuple(rgb) if rgb is not None else None,
+            data.get("color_temp_kelvin"),
+            data.get("color_mode"),
+        )
+
 
 class BLEDOMLight(RestoreEntity, LightEntity):
     def __init__(self, bledomInstance: BLEDOMInstance, name: str, entry_id: str) -> None:
@@ -138,6 +177,17 @@ class BLEDOMLight(RestoreEntity, LightEntity):
         )
 
     @property
+    def extra_restore_state_data(self) -> BLEDOMLightExtraStoredData:
+        """Color state to keep across restarts, including while off."""
+        rgb = self._instance.get_color_base() if self._instance.rgb_color is not None else None
+        return BLEDOMLightExtraStoredData(
+            self._instance.brightness,
+            tuple(rgb) if rgb is not None else None,
+            self._instance.color_temp_kelvin,
+            self._attr_color_mode.value if self._attr_color_mode is not None else None,
+        )
+
+    @property
     def should_poll(self) -> bool:
         """No polling needed for a demo light."""
         return False
@@ -184,7 +234,7 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 LOGGER.debug(f"Previous state was unavailable, setting to OFF")
             
             # Restore brightness
-            if ATTR_BRIGHTNESS in last_state.attributes:
+            if last_state.attributes.get(ATTR_BRIGHTNESS) is not None:
                 self._instance._brightness = last_state.attributes[ATTR_BRIGHTNESS]
                 LOGGER.debug(f"Restored brightness: {self._instance._brightness}")
             
@@ -250,6 +300,9 @@ class BLEDOMLight(RestoreEntity, LightEntity):
             self._instance._is_on = False
             self._instance._brightness = 255
 
+        if (extra := await self.async_get_last_extra_data()) is not None:
+            self._restore_extra_data(BLEDOMLightExtraStoredData.from_dict(extra.as_dict()))
+
         # Final safety: ensure color_mode is always valid for this model
         if self._attr_color_mode not in self._attr_supported_color_modes:
             fallback = next(iter(self._attr_supported_color_modes), ColorMode.ONOFF)
@@ -258,6 +311,29 @@ class BLEDOMLight(RestoreEntity, LightEntity):
                 self.name, self._attr_color_mode, self._attr_supported_color_modes, fallback
             )
             self._attr_color_mode = fallback
+
+    def _restore_extra_data(self, data: BLEDOMLightExtraStoredData) -> None:
+        """Restore color state the light's last state did not carry.
+
+        Only fills values that are still unknown, so a light that was on keeps
+        what its state attributes restored.
+        """
+        if data.brightness is not None and self._instance._brightness in (None, 255):
+            self._instance._brightness = data.brightness
+        if self._instance._rgb_color is not None or self._instance._color_temp_kelvin is not None:
+            return
+        try:
+            mode = ColorMode(data.color_mode) if data.color_mode else None
+        except ValueError:
+            mode = None
+        if data.rgb_color is not None and ColorMode.RGB in self._attr_supported_color_modes:
+            self._instance._rgb_color = data.rgb_color
+            self._instance._rgb_color_base = data.rgb_color
+        if data.color_temp_kelvin is not None and ColorMode.COLOR_TEMP in self._attr_supported_color_modes:
+            self._instance._color_temp_kelvin = data.color_temp_kelvin
+        if mode in self._attr_supported_color_modes:
+            self._attr_color_mode = mode
+        LOGGER.debug("%s: restored color state kept while off: %s", self.name, data.as_dict())
 
     def _transform_color_brightness(self, color: Tuple[int, int, int], set_brightness: int):
         rgb = match_max_scale((255,), color)
