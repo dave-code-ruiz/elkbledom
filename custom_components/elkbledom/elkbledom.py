@@ -756,6 +756,19 @@ class BLEDOMInstance:
             self._client = client
             self._reset_disconnect_timer()
 
+            # The MELK/MODELX login ends with a bare 7e 04 04 (power command
+            # prefix) which switches the strip off.  Re-send power-on when the
+            # requested state is on, otherwise later colour/brightness writes
+            # go to a strip that stays dark while HA reports it as on.
+            if self._is_on and (
+                self._device.name.lower().startswith("melk")
+                or self._device.name.lower().startswith("modelx")
+            ):
+                LOGGER.debug("%s: Restoring power after login; RSSI: %s", self.name, self.rssi)
+                await self._write_while_connected(
+                    self._model.get_turn_on_cmd(self._model_name)
+                )
+
             # Enable notifications (simple method, no manual CCCD)
             try:
                 if not self._device.name.lower().startswith("melk") and not self._device.name.lower().startswith("ledble"):
