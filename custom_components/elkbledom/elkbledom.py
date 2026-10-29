@@ -538,17 +538,30 @@ class BLEDOMInstance:
         self._mic_enabled = False
         LOGGER.debug("External microphone disabled")
 
+    async def _write_power(self, cmd: list[int], is_on: bool) -> None:
+        """Record the requested power state before queueing the command.
+
+        Commands wait on _command_lock (connect + login can take seconds).
+        A request arriving meanwhile must see the state the queue will end
+        in, otherwise light.async_turn_on skips its power-on command.
+        """
+        previous = self._is_on
+        self._is_on = is_on
+        try:
+            await self._write(cmd)
+        except BaseException:
+            self._is_on = previous
+            raise
+
     @retry_bluetooth_connection_error
     async def turn_on(self) -> None:
         cmd = self._model.get_turn_on_cmd(self._model_name)
-        await self._write(cmd)
-        self._is_on = True
+        await self._write_power(cmd, True)
 
     @retry_bluetooth_connection_error
     async def turn_off(self) -> None:
         cmd = self._model.get_turn_off_cmd(self._model_name)
-        await self._write(cmd)
-        self._is_on = False
+        await self._write_power(cmd, False)
 
     @retry_bluetooth_connection_error
     async def set_scheduler_on(self, days: int, hours: int, minutes: int, enabled: bool) -> None:
