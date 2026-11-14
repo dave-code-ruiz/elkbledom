@@ -182,6 +182,9 @@ class BLEDOMInstance:
         self._mic_effect = None
         self._mic_sensitivity = 50
         self._mic_enabled = False
+        self._motor_on = False
+        self._motor_mode = None
+        self._motor_speed = None
         self._model = None
         self._model_name = None
         self._color_temp = None
@@ -523,6 +526,39 @@ class BLEDOMInstance:
         await self._write([0x7e, 0x04, 0x06, value, 0xff, 0xff, 0xff, 0x00, 0xef])
         self._mic_sensitivity = value
         LOGGER.debug("Mic sensitivity set to: %d", value)
+
+    @retry_bluetooth_connection_error
+    async def set_motor_power(self, on: bool) -> None:
+        """Turn the motor that moves a star projector's gobo on or off."""
+        cmd = self._model.get_motor_power_cmd(self._model_name, on)
+        if cmd is None:
+            raise ValueError(f"{self._model_name} has no motor")
+        await self._write(cmd)
+        self._motor_on = on
+        LOGGER.debug("%s: Motor %s", self.name, "on" if on else "off")
+
+    @retry_bluetooth_connection_error
+    async def set_motor_mode(self, mode: str) -> None:
+        """Set the motor mode by name (see motor_modes in models.json)."""
+        modes = self._model.get_motor_modes(self._model_name)
+        if mode not in modes:
+            raise ValueError(f"Motor mode {mode!r} is not supported by {self._model_name}")
+        await self._write(self._model.get_motor_mode_cmd(self._model_name, modes[mode]))
+        self._motor_mode = mode
+        LOGGER.debug("%s: Motor mode %s", self.name, mode)
+
+    @retry_bluetooth_connection_error
+    async def set_motor_speed(self, value: int) -> None:
+        """Set the motor speed within the model's motor_speed_range."""
+        min_speed, max_speed = self._model.get_motor_speed_range(self._model_name)
+        if not min_speed <= value <= max_speed:
+            raise ValueError(
+                f"Motor speed {value} is outside the supported range "
+                f"{min_speed}-{max_speed} for {self._model_name}"
+            )
+        await self._write(self._model.get_motor_speed_cmd(self._model_name, value))
+        self._motor_speed = value
+        LOGGER.debug("%s: Motor speed %d", self.name, value)
 
     @retry_bluetooth_connection_error
     async def enable_mic(self) -> None:

@@ -26,6 +26,8 @@ async def async_setup_entry(
     entities = [BLEDOMMicSensitivity(instance, "Mic Sensitivity " + config_entry.data["name"], config_entry.entry_id)]
     if instance.model.get_effect_speed_cmd(instance.model_name, 128):
         entities.append(BLEDOMEffectSpeed(instance, "Effect Speed " + config_entry.data["name"], config_entry.entry_id))
+    if instance.model.get_motor_speed_cmd(instance.model_name, 1):
+        entities.append(BLEDOMMotorSpeed(instance, "Flicker Speed " + config_entry.data["name"], config_entry.entry_id))
     async_add_entities(entities)
 
 class BLEDOMEffectSpeed(RestoreEntity, NumberEntity):
@@ -179,3 +181,65 @@ class BLEDOMMicSensitivity(RestoreEntity, NumberEntity):
                 LOG.debug(f"Could not restore mic sensitivity for {self.name}, using default (50)")
         else:
             LOG.debug(f"No previous state found for {self.name}")
+
+
+class BLEDOMMotorSpeed(RestoreEntity, NumberEntity):
+    """Motor speed for star projectors (moves the gobo in front of the light)."""
+
+    _attr_icon = "mdi:speedometer"
+
+    def __init__(self, bledomInstance: BLEDOMInstance, attr_name: str, entry_id: str) -> None:
+        self._instance = bledomInstance
+        self._attr_name = attr_name
+        self._attr_unique_id = self._instance.address + "_motor_speed"
+        min_speed, max_speed = self._instance.model.get_motor_speed_range(
+            self._instance.model_name
+        )
+        self._attr_native_min_value = min_speed
+        self._attr_native_max_value = max_speed
+        self._attr_native_step = 1
+
+    @property
+    def available(self):
+        return self._instance.is_on != None
+
+    @property
+    def name(self) -> str:
+        return self._attr_name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique id."""
+        return self._attr_unique_id
+
+    @property
+    def native_value(self) -> int | None:
+        return self._instance._motor_speed
+
+    @property
+    def device_info(self):
+        """Return device info."""
+        return DeviceInfo(
+            identifiers={
+                (DOMAIN, self._instance.address)
+            },
+            name=self.name,
+            connections={(device_registry.CONNECTION_NETWORK_MAC,
+                          self._instance.address)},
+        )
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Update the motor speed."""
+        await self._instance.set_motor_speed(int(value))
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the last known motor speed (the lamp can't be queried for it)."""
+        await super().async_added_to_hass()
+        if (last_state := await self.async_get_last_state()) is not None:
+            try:
+                restored = int(float(last_state.state))
+            except (ValueError, TypeError):
+                return
+            if self._attr_native_min_value <= restored <= self._attr_native_max_value:
+                self._instance._motor_speed = restored

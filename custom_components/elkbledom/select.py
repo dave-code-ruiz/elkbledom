@@ -21,10 +21,15 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     instance = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities([
+    entities = [
         BLEDOMMicEffect(instance, "Mic Effect " + config_entry.data["name"], config_entry.entry_id),
         BLEDOMBrightnessModeSelect(instance, "Brightness Mode " + config_entry.data["name"], config_entry, config_entry.entry_id)
-    ])
+    ]
+    if instance.model.get_motor_modes(instance.model_name):
+        entities.append(
+            BLEDOMMotorModeSelect(instance, "Flicker Mode " + config_entry.data["name"], config_entry.entry_id)
+        )
+    async_add_entities(entities)
 
 class BLEDOMMicEffect(RestoreEntity, SelectEntity):
     """Microphone Effect selector entity"""
@@ -170,3 +175,58 @@ class BLEDOMBrightnessModeSelect(RestoreEntity, SelectEntity):
         # (or configured) mode to it, or the selector shows a mode that is not used.
         await self._instance.apply_brightness_mode(self._current_option)
 
+
+
+class BLEDOMMotorModeSelect(RestoreEntity, SelectEntity):
+    """Motor mode selector for star projectors (e.g. swing or rotate)."""
+
+    _attr_icon = "mdi:rotate-3d-variant"
+
+    def __init__(self, bledomInstance: BLEDOMInstance, attr_name: str, entry_id: str) -> None:
+        self._instance = bledomInstance
+        self._attr_name = attr_name
+        self._attr_unique_id = self._instance.address + "_motor_mode"
+        self._attr_options = list(
+            self._instance.model.get_motor_modes(self._instance.model_name)
+        )
+
+    @property
+    def available(self):
+        return self._instance.is_on != None
+
+    @property
+    def name(self) -> str:
+        return self._attr_name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique id."""
+        return self._attr_unique_id
+
+    @property
+    def current_option(self) -> str | None:
+        return self._instance._motor_mode
+
+    @property
+    def device_info(self):
+        """Return device info."""
+        return DeviceInfo(
+            identifiers={
+                (DOMAIN, self._instance.address)
+            },
+            name=self.name,
+            connections={(device_registry.CONNECTION_NETWORK_MAC,
+                          self._instance.address)},
+        )
+
+    async def async_select_option(self, option: str) -> None:
+        """Change the motor mode."""
+        await self._instance.set_motor_mode(option)
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the last known motor mode (the lamp can't be queried for it)."""
+        await super().async_added_to_hass()
+        if (last_state := await self.async_get_last_state()) is not None:
+            if last_state.state in self._attr_options:
+                self._instance._motor_mode = last_state.state
