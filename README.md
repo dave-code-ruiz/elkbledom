@@ -58,6 +58,7 @@ This integration currently supports the following device models:
 - **MELK-OG10**
 - **MELK-OA21**
 - **LEDBLE**
+- **LEDBLE-02** (star projectors; adds flicker motor on/off, mode and speed)
 - **LED-**
 - **JACKYLED**
 - **XROCKER**

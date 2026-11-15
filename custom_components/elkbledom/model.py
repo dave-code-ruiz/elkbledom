@@ -293,7 +293,40 @@ class Model:
                 "effect_speed_range", {}
             ).get("max", 255)
         return 255
-    
+
+    def _get_value_cmd(self, internal_key: str, command: str, value: int) -> Optional[List[int]]:
+        """Get a command with its 'v' placeholder replaced, or None if the model lacks it."""
+        if internal_key in self._models:
+            cmd = self._models[internal_key].get("commands", {}).get(command)
+            if cmd:
+                return [int(value) if x == "v" else x for x in cmd]
+        return None
+
+    def get_motor_power_cmd(self, internal_key: str, on: bool) -> Optional[List[int]]:
+        """Get motor (star projector gobo) on/off command, or None if unsupported."""
+        return self._get_value_cmd(internal_key, "motor_power", 1 if on else 0)
+
+    def get_motor_mode_cmd(self, internal_key: str, value: int) -> Optional[List[int]]:
+        """Get motor mode command, or None if unsupported."""
+        return self._get_value_cmd(internal_key, "motor_mode", value)
+
+    def get_motor_speed_cmd(self, internal_key: str, value: int) -> Optional[List[int]]:
+        """Get motor speed command, or None if unsupported."""
+        return self._get_value_cmd(internal_key, "motor_speed", value)
+
+    def get_motor_modes(self, internal_key: str) -> Dict[str, int]:
+        """Return the motor modes (name -> value) a model supports."""
+        if internal_key in self._models:
+            return dict(self._models[internal_key].get("motor_modes", {}))
+        return {}
+
+    def get_motor_speed_range(self, internal_key: str) -> tuple[int, int]:
+        """Return the (min, max) motor speed for a model."""
+        speed_range = {}
+        if internal_key in self._models:
+            speed_range = self._models[internal_key].get("motor_speed_range", {})
+        return speed_range.get("min", 1), speed_range.get("max", 10)
+
     def get_effect_cmd(self, internal_key: str, value: int) -> Optional[List[int]]:
         """Get effect command for model by internal key"""
         if internal_key in self._models:
