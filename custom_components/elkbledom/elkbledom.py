@@ -508,6 +508,22 @@ class BLEDOMInstance:
         self._effect = value
 
     @retry_bluetooth_connection_error
+    async def send_raw(self, commands: list[list[int]], delay: float = 0.0) -> None:
+        """Write raw command bytes to the controller.
+
+        Intended for protocol features the integration does not model yet
+        (e.g. scenes or custom patterns captured from the vendor app). Each
+        command is written as-is, in order, with ``delay`` seconds between them.
+        """
+        for index, command in enumerate(commands):
+            if index and delay:
+                await asyncio.sleep(delay)
+            LOGGER.debug(
+                "%s: Sending raw command %d/%d", self.name, index + 1, len(commands)
+            )
+            await self._write(command)
+
+    @retry_bluetooth_connection_error
     async def set_mic_effect(self, value: int) -> None:
         """Set microphone effect (0x80-0x87)."""
         if not 0x80 <= value <= 0x87:

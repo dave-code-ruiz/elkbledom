@@ -75,3 +75,38 @@ set_rgb_color:
           min: 0
           max: 255
           mode: slider
+
+send_raw:
+  name: Send Raw Command
+  description: >-
+    Write raw command bytes to the LED controller, for features the integration
+    does not support yet (for example scenes or custom patterns captured from the
+    vendor app). Commands are sent as-is; an invalid command may leave the
+    controller in an unexpected state.
+  fields:
+    entity_id:
+      name: Entity
+      description: The ElkBLEDOM light to send the commands to
+      required: true
+      example: "light.led1"
+      selector:
+        entity:
+          integration: elkbledom
+          domain: light
+    commands:
+      name: Commands
+      description: List of commands as hex strings, one BLE write each
+      required: true
+      example: '["7e 07 31 04 07 ff ff 00 ef"]'
+      selector:
+        object:
+    delay_ms:
+      name: Delay between commands
+      description: Pause between consecutive commands, in milliseconds
+      required: false
+      default: 80
+      selector:
+        number:
+          min: 0
+          max: 5000
+          unit_of_measurement: ms

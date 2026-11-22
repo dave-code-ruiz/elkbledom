@@ -617,6 +617,23 @@ cards:
 
 ---
 
+### Sending Raw Commands
+
+The `elkbledom.send_raw` action writes raw bytes to the controller. Use it for features the integration doesn't model yet, such as the scenes or custom patterns in the vendor app. Each entry in `commands` is one BLE write, given as a hex string (spaces are optional).
+
+```yaml
+action: elkbledom.send_raw
+data:
+  entity_id: light.elk_bledom
+  commands:
+    - "7e 07 31 04 07 ff ff 00 ef"
+  delay_ms: 80 # optional pause between commands (default 80)
+```
+
+Commands differ between models, so the example above may not apply to your strip. To find the commands your vendor app sends, capture its Bluetooth traffic as described in [Sniffing BLE Traffic](sniffing_ble_device.md). The Android HCI snoop method needs no extra hardware. Close the vendor app before using the action, because HA can't connect while the app is connected.
+
+HA doesn't know what the controller is doing after a raw command, so the light's reported color and effect may not match what's showing.
+
 ## Contributing
 
 Contributions are welcome! Here's how you can help:
